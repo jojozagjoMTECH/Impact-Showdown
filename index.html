@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Advanced Super Smash Bros. Clone</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div id="main-menu">
+        <h1>Super Smash Bros. Clone</h1>
+        <button id="start-game">Start Game</button>
+    </div>
+    <div id="character-selection" class="hidden">
+        <h2>Select Your Characters</h2>
+        <div id="characters">
+            <div class="character" data-character="red" style="background-color: red;"></div>
+            <div class="character" data-character="blue" style="background-color: blue;"></div>
+            <div class="character" data-character="green" style="background-color: green;"></div>
+            <div class="character" data-character="yellow" style="background-color: yellow;"></div>
+        </div>
+        <button id="confirm-characters" class="hidden">Confirm Characters</button>
+    </div>
+    <div id="map-selection" class="hidden">
+        <h2>Select Your Map</h2>
+        <div id="maps">
+            <div class="map" data-map="platform">Platform</div>
+        </div>
+        <button id="start-fight" class="hidden">Start Fight</button>
+    </div>
+    <div id="game" class="hidden">
+        <div id="platform"></div>
+        <div id="player1" class="player"></div>
+        <div id="player2" class="player"></div>
+        <div id="health-bar1" class="health-bar"><div class="health"></div></div>
+        <div id="health-bar2" class="health-bar"><div class="health"></div></div>
+        <div id="abilities">
+            <div id="player1-abilities">Player 1 Abilities: Jump (W), Attack (Space), Ultimate (U)</div>
+            <div id="player2-abilities">Player 2 Abilities: Jump (Arrow Up), Attack (Enter), Ultimate (I)</div>
+        </div>
+    </div>
+    <script src="script.js"></script>
+</body>
+</html>

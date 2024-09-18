@@ -1,0 +1,126 @@
+body {
+    margin: 0;
+    overflow: hidden;
+    background-color: #87CEEB;
+    font-family: Arial, sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+}
+
+.hidden {
+    display: none;
+}
+
+#main-menu, #character-selection, #map-selection, #game {
+    text-align: center;
+}
+
+#characters, #maps {
+    display: flex;
+    justify-content: center;
+    gap: 20px;
+}
+
+.character, .map {
+    padding: 20px;
+    border: 2px solid #000;
+    cursor: pointer;
+}
+
+.character {
+    width: 50px;
+    height: 50px;
+}
+
+#game {
+    position: relative;
+    width: 100vw;
+    height: 100vh;
+}
+
+#platform {
+    position: absolute;
+    bottom: 10%;
+    left: 10%;
+    width: 80%;
+    height: 20px;
+    background-color: #654321;
+}
+
+.player {
+    position: absolute;
+    width: 50px;
+    height: 50px;
+    transition: transform 0.1s;
+}
+
+#player2 {
+    left: 90%;
+}
+
+.health-bar {
+    position: absolute;
+    width: 200px;
+    height: 20px;
+    background-color: #ccc;
+}
+
+#health-bar1 {
+    top: 10px;
+    left: 10px;
+}
+
+#health-bar2 {
+    top: 10px;
+    right: 10px;
+}
+
+.health {
+    height: 100%;
+    background-color: green;
+}
+
+#abilities {
+    position: absolute;
+    bottom: 10px;
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    color: white;
+    font-size: 18px;
+}
+
+.vfx {
+    position: absolute;
+    width: 100px;
+    height: 100px;
+    background-color: rgba(255, 0, 0, 0.5);
+    border-radius: 50%;
+    pointer-events: none;
+    animation: fadeOut 1s forwards;
+}
+
+.laser {
+    position: absolute;
+    width: 5px;
+    height: 100px;
+    background-color: red;
+    pointer-events: none;
+    animation: shootLaser 1s forwards;
+}
+
+@keyframes fadeOut {
+    to {
+        opacity: 0;
+        transform: scale(2);
+    }
+}
+
+@keyframes shootLaser {
+    to {
+        height: 500px;
+        opacity: 0;
+    }
+}
