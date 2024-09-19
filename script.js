@@ -40,6 +40,7 @@ let player2 = {
     comboCooldown: false
 };
 
+let gameLoopRunning = false;
 const gravity = 0.5;
 const canvas = document.getElementById('game-canvas');
 const context = canvas.getContext('2d');
@@ -392,7 +393,10 @@ function startGame() {
         }
     }
 
-    gameLoop();
+    if (!gameLoopRunning) {
+        gameLoopRunning = true;
+        gameLoop();
+    }
 }
 
 document.getElementById('player1-controls').addEventListener('input', (event) => {
