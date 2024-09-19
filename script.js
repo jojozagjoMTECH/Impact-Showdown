@@ -254,8 +254,8 @@ function startGame() {
                         screenShake(10, 500);
                         player.ultimateCharge += 10;
                         // Scale knockback based on percentage
-                        const knockback = player2.percentage * 0.1;
-                        player2.velocityX = (player2.x - player.x) * knockback;
+                        const knockback = player2.percentage;
+                        player2.velocityX = (player2.x - player.x) + knockback;
                         player2.velocityY = -5 * knockback;
                         player2.knockbackActive = true;
                     }
@@ -269,8 +269,8 @@ function startGame() {
                         screenShake(10, 500);
                         player.ultimateCharge += 10;
                         // Scale knockback based on percentage
-                        const knockback = player1.percentage * 0.1;
-                        player1.velocityX = (player1.x - player.x) * knockback;
+                        const knockback = player1.percentage;
+                        player1.velocityX = (player1.x - player.x) + knockback;
                         player1.velocityY = -5 * knockback;
                         player1.knockbackActive = true;
                     }
@@ -304,8 +304,8 @@ function startGame() {
                 screenShake(10, 500);
                 player.ultimateCharge += 10;
                 // Scale knockback based on percentage
-                const knockback = player2.percentage * 0.1;
-                player2.velocityX = (player2.x - player.x) * knockback;
+                const knockback = player2.percentage;
+                player2.velocityX = (player2.x - player.x) + knockback;
                 player2.velocityY = -5 * knockback;
                 player2.knockbackActive = true;
             }
@@ -319,8 +319,8 @@ function startGame() {
                 screenShake(10, 500);
                 player.ultimateCharge += 10;
                 // Scale knockback based on percentage
-                const knockback = player1.percentage * 0.1;
-                player1.velocityX = (player1.x - player.x) * knockback;
+                const knockback = player1.percentage;
+                player1.velocityX = (player1.x - player.x) + knockback;
                 player1.velocityY = -5 * knockback;
                 player1.knockbackActive = true;
             }
@@ -466,23 +466,6 @@ function useUltimate(player) {
         showUltimateEffect(player);
         player.ultimateCharge = 0;
         player.ultimateReady = false;
-    }
-}
-
-function useMelee(player) {
-    // Trigger melee attack based on character and direction
-    if (player.character === 1) {
-        // Character 1 melee attack
-        context.fillStyle = 'lightblue';
-        context.fillRect(player.x + 50, player.y, 50, 50);
-        player2.percentage += 10; // Add percentage to opponent
-        showDamageEffect(player2);
-    } else if (player.character === 2) {
-        // Character 2 melee attack
-        context.fillStyle = 'pink';
-        context.fillRect(player.x - 50, player.y, 50, 50);
-        player1.percentage += 10; // Add percentage to opponent
-        showDamageEffect(player1);
     }
 }
 
