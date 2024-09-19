@@ -1,126 +1,69 @@
 body {
+    font-family: Arial, sans-serif;
+    text-align: center;
     margin: 0;
     overflow: hidden;
-    background-color: #87CEEB;
-    font-family: Arial, sans-serif;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
+    background-color: #282c34;
+    color: white;
 }
 
 .hidden {
     display: none;
 }
 
-#main-menu, #character-selection, #map-selection, #game {
-    text-align: center;
+#main-menu, #settings-menu, #character-selection, #map-selection, #game {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
 }
 
-#characters, #maps {
-    display: flex;
-    justify-content: center;
-    gap: 20px;
-}
-
-.character, .map {
-    padding: 20px;
-    border: 2px solid #000;
-    cursor: pointer;
-}
-
-.character {
-    width: 50px;
-    height: 50px;
-}
-
-#game {
-    position: relative;
+#game-canvas {
+    border: 1px solid black;
     width: 100vw;
     height: 100vh;
+    background-color: #1e1e1e;
+    margin: auto;
+    display: block;
 }
 
-#platform {
+#ui {
     position: absolute;
-    bottom: 10%;
-    left: 10%;
-    width: 80%;
-    height: 20px;
-    background-color: #654321;
-}
-
-.player {
-    position: absolute;
-    width: 50px;
-    height: 50px;
-    transition: transform 0.1s;
-}
-
-#player2 {
-    left: 90%;
-}
-
-.health-bar {
-    position: absolute;
-    width: 200px;
-    height: 20px;
-    background-color: #ccc;
-}
-
-#health-bar1 {
     top: 10px;
     left: 10px;
-}
-
-#health-bar2 {
-    top: 10px;
     right: 10px;
-}
-
-.health {
-    height: 100%;
-    background-color: green;
-}
-
-#abilities {
-    position: absolute;
-    bottom: 10px;
-    width: 100%;
     display: flex;
-    justify-content: space-around;
+    justify-content: space-between;
+}
+
+#player1-ui, #player2-ui {
+    background-color: rgba(0, 0, 0, 0.8);
+    padding: 10px;
+    border-radius: 5px;
     color: white;
-    font-size: 18px;
 }
 
-.vfx {
-    position: absolute;
-    width: 100px;
-    height: 100px;
-    background-color: rgba(255, 0, 0, 0.5);
-    border-radius: 50%;
-    pointer-events: none;
-    animation: fadeOut 1s forwards;
+button {
+    background-color: #4CAF50; /* Green background */
+    border: none;
+    color: white;
+    padding: 15px 32px;
+    text-align: center;
+    text-decoration: none;
+    display: inline-block;
+    font-size: 16px;
+    margin: 4px 2px;
+    cursor: pointer;
+    border-radius: 12px; /* Rounded corners */
+    transition: background-color 0.3s, transform 0.3s; /* Smooth transitions */
 }
 
-.laser {
-    position: absolute;
-    width: 5px;
-    height: 100px;
-    background-color: red;
-    pointer-events: none;
-    animation: shootLaser 1s forwards;
+button:hover {
+    background-color: #45a049; /* Darker green on hover */
+    transform: scale(1.05); /* Slightly larger on hover */
 }
 
-@keyframes fadeOut {
-    to {
-        opacity: 0;
-        transform: scale(2);
-    }
-}
-
-@keyframes shootLaser {
-    to {
-        height: 500px;
-        opacity: 0;
-    }
+button:active {
+    background-color: #3e8e41; /* Even darker green on click */
+    transform: scale(0.95); /* Slightly smaller on click */
 }

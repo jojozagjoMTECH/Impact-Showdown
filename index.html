@@ -3,42 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Advanced Super Smash Bros. Clone</title>
+    <title>2 Player Fighting Game</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div id="main-menu">
-        <h1>Super Smash Bros. Clone</h1>
-        <button id="start-game">Start Game</button>
+        <h1>2 Player Fighting Game</h1>
+        <button id="play-button">Play</button>
+        <button id="settings-button">Settings</button>
     </div>
+
+    <div id="settings-menu" class="hidden">
+        <h2>Settings</h2>
+        <label for="player1-controls">Player 1 Controls:</label>
+        <input type="text" id="player1-controls" value="WASD">
+        <label for="player1-ultimate">Player 1 Ultimate:</label>
+        <input type="text" id="player1-ultimate" value="Q">
+        <label for="player1-melee">Player 1 Melee:</label>
+        <input type="text" id="player1-melee" value="E">
+        <label for="player2-controls">Player 2 Controls:</label>
+        <input type="text" id="player2-controls" value="IJKL">
+        <label for="player2-ultimate">Player 2 Ultimate:</label>
+        <input type="text" id="player2-ultimate" value="U">
+        <label for="player2-melee">Player 2 Melee:</label>
+        <input type="text" id="player2-melee" value="O">
+        <label for="toggle-hitboxes">Show Hitboxes:</label>
+        <input type="checkbox" id="toggle-hitboxes">
+        <button id="back-button">Back</button>
+    </div>
+
     <div id="character-selection" class="hidden">
-        <h2>Select Your Characters</h2>
-        <div id="characters">
-            <div class="character" data-character="red" style="background-color: red;"></div>
-            <div class="character" data-character="blue" style="background-color: blue;"></div>
-            <div class="character" data-character="green" style="background-color: green;"></div>
-            <div class="character" data-character="yellow" style="background-color: yellow;"></div>
+        <h2>Character Selection</h2>
+        <div id="player1-selection">
+            <h3>Player 1</h3>
+            <button class="character" data-player="1" data-character="1">Character 1</button>
+            <button class="character" data-player="1" data-character="2">Character 2</button>
         </div>
-        <button id="confirm-characters" class="hidden">Confirm Characters</button>
+        <div id="player2-selection" class="hidden">
+            <h3>Player 2</h3>
+            <button class="character" data-player="2" data-character="1">Character 1</button>
+            <button class="character" data-player="2" data-character="2">Character 2</button>
+        </div>
     </div>
+
     <div id="map-selection" class="hidden">
-        <h2>Select Your Map</h2>
-        <div id="maps">
-            <div class="map" data-map="platform">Platform</div>
-        </div>
-        <button id="start-fight" class="hidden">Start Fight</button>
+        <h2>Map Selection</h2>
+        <button class="map" data-map="1">Map 1</button>
+        <button class="map" data-map="2">Map 2</button>
     </div>
+
     <div id="game" class="hidden">
-        <div id="platform"></div>
-        <div id="player1" class="player"></div>
-        <div id="player2" class="player"></div>
-        <div id="health-bar1" class="health-bar"><div class="health"></div></div>
-        <div id="health-bar2" class="health-bar"><div class="health"></div></div>
-        <div id="abilities">
-            <div id="player1-abilities">Player 1 Abilities: Jump (W), Attack (Space), Ultimate (U)</div>
-            <div id="player2-abilities">Player 2 Abilities: Jump (Arrow Up), Attack (Enter), Ultimate (I)</div>
+        <canvas id="game-canvas"></canvas>
+        <div id="ui">
+            <div id="player1-ui">
+                <p>Player 1 Ultimate: <span id="player1-ultimate-key">Q</span></p>
+                <p>Player 1 Melee: <span id="player1-melee-key">E</span></p>
+            </div>
+            <div id="player2-ui">
+                <p>Player 2 Ultimate: <span id="player2-ultimate-key">U</span></p>
+                <p>Player 2 Melee: <span id="player2-melee-key">O</span></p>
+            </div>
         </div>
     </div>
+
     <script src="script.js"></script>
 </body>
 </html>
