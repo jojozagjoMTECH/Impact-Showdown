@@ -95,6 +95,8 @@ document.querySelectorAll('.map').forEach(button => {
 });
 
 function startGame() {
+    resetPlayer(player1);
+    resetPlayer(player2);
     function gameLoop() {
         context.clearRect(0, 0, canvas.width, canvas.height);
         drawPlatforms();
@@ -122,12 +124,12 @@ function startGame() {
             player.velocityY = 0;
             player.onGround = true;
             player.knockbackActive = false; // Deactivate knockback when player hits the ground
-        } else {
+        } else if (!player.onGround) {
             player.onGround = false;
         }
     
         // Check for falling off the platform
-        if (player.y > canvas.height) {
+        if (player.y > canvas.height - 80) {
             player.lives -= 1;
             resetPlayer(player);
         }
@@ -180,7 +182,7 @@ function startGame() {
             if (player.x < platform.x + platform.width &&
                 player.x + player.width > platform.x &&
                 player.y + player.height >= platform.y &&
-                player.y + player.height <= platform.y + platform.height) {
+                player.y + player.height <= platform.y + 1) { // Allow a small margin for error
                 player.y = platform.y - player.height;
                 player.velocityY = 0;
                 player.onGround = true;
@@ -204,13 +206,16 @@ function startGame() {
     }
 
     function resetPlayer(player) {
+        console.log("Resetting player:", player);
+    
         if (player.character === 1) {
             player.x = platforms[0].x + 50; // Spawn Player 1 on the left side of the platform
-            player.y = platforms[0].y - player.height;
+            console.log("Player 1 position:", player.x, player.y);
         } else {
             player.x = platforms[0].x + platforms[0].width - 100; // Spawn Player 2 on the right side of the platform
-            player.y = platforms[0].y - player.height;
+            console.log("Player 2 position:", player.x, player.y);
         }
+        player.y = platforms[0].y - player.height;
         player.velocityX = 0;
         player.velocityY = 0;
         player.percentage = 0;
