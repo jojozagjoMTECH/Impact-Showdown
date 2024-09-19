@@ -241,43 +241,52 @@ function startGame() {
 
     function useUltimate(player) {
         if (player.ultimateReady) {
-            if (player.character === 1) {
-                context.fillStyle = 'lightblue';
-                context.fillRect(player.x + 50, player.y, 50, 50);
-                if (checkHit(player, player2) && !player2.invincible) {
-                    player2.percentage += 10;
-                    showDamageEffect(player2);
-                    showHitVFX(player2);
-                    screenShake(10, 500);
-                    player.ultimateCharge += 10;
-                    // Scale knockback based on percentage
-                    const knockback = player2.percentage;
-                    player2.velocityX = (player2.x - player.x) + knockback;
-                    player2.velocityY = -5 * knockback;
-                    player2.knockbackActive = true;
+            function useMelee(player) {
+                if (player.comboCooldown) return;
+            
+                if (player.character === 1) {
+                    context.fillStyle = 'lightblue';
+                    context.fillRect(player.x + 50, player.y, 50, 50);
+                    if (checkHit(player, player2) && !player2.invincible) {
+                        player2.percentage += 10;
+                        showHitVFX(player2);
+                        screenShake(10, 500);
+                        player.ultimateCharge += 10;
+                        // Scale knockback based on percentage
+                        const knockback = player2.percentage;
+                        player2.velocityX = (player2.x - player.x) + knockback;
+                        player2.velocityY = -5 * knockback;
+                        player2.knockbackActive = true;
+                    }
+                } else if (player.character === 2) {
+                    context.fillStyle = 'pink';
+                    context.fillRect(player.x - 50, player.y, 50, 50);
+                    if (checkHit(player, player1) && !player1.invincible) {
+                        player1.percentage += 10;
+                        showHitVFX(player1);
+                        screenShake(10, 500);
+                        player.ultimateCharge += 10;
+                        // Scale knockback based on percentage
+                        const knockback = player1.percentage;
+                        player1.velocityX = (player1.x - player.x) + knockback;
+                        player1.velocityY = -5 * knockback;
+                        player1.knockbackActive = true;
+                    }
                 }
-            } else if (player.character === 2) {
-                context.fillStyle = 'pink';
-                context.fillRect(player.x - 50, player.y, 50, 50);
-                if (checkHit(player, player1) && !player1.invincible) {
-                    player1.percentage += 10;
-                    showDamageEffect(player1);
-                    showHitVFX(player1);
-                    screenShake(10, 500);
-                    player.ultimateCharge += 10;
-                    // Scale knockback based on percentage
-                    const knockback = player1.percentage;
-                    player1.velocityX = (player1.x - player.x) + knockback;
-                    player1.velocityY = -5 * knockback;
-                    player1.knockbackActive = true;
+            
+                player.comboHits += 1;
+                if (player.comboHits >= 4) {
+                    player.comboCooldown = true;
+                    setTimeout(() => {
+                        player.comboHits = 0;
+                        player.comboCooldown = false;
+                    }, 1000);
                 }
-            }
-    
+            }(player);
             player.ultimateCharge = 0;
             player.ultimateReady = false;
         }
     }
-    
 
     // Update useMelee function to include scaled knockback
     function useMelee(player) {
