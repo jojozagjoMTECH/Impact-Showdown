@@ -16,7 +16,10 @@ let player1 = {
     velocityX: 0,
     velocityY: 0,
     comboHits: 0,
-    comboCooldown: false
+    comboCooldown: false,
+    isFalling: false,
+    iFrames: false,
+    visible: true
 };
 
 let player2 = {
@@ -37,7 +40,10 @@ let player2 = {
     velocityX: 0,
     velocityY: 0,
     comboHits: 0,
-    comboCooldown: false
+    comboCooldown: false,
+    isFalling: false,
+    iFrames: false,
+    visible: true
 };
 
 let gameLoopRunning = false;
@@ -111,6 +117,7 @@ function startGame() {
     }
 
     function updatePlayer(player) {
+
         // Apply gravity
         player.velocityY += gravity;
         player.y += player.velocityY;
@@ -129,11 +136,24 @@ function startGame() {
             player.onGround = false;
         }
     
-        // Check for falling off the platform
+        // Check for falling off the plaawtform
         if (player.y > canvas.height - 80) {
-            player.lives -= 1;
-            resetPlayer(player);
+            if (!player.isFalling) {
+                player.isFalling = true; // Mark the player as falling
+                player.visible = false; // Hide the player
+                showFallVFX(player, 1000); // Show VFX for 1 second
+                screenShake(20, 500);
+                player.lives -= 1;
+    
+                // Delay the resetPlayer call to allow the effect to show
+                setTimeout(() => {
+                    resetPlayer(player);
+                    player.isFalling = false; // Reset the falling flag
+                    player.visible = true; // Show the player again
+                }, 2000); // Delay for 2 seconds (2000 milliseconds)
+            }
         }
+        
     
         // Update player position and ultimate charge
         if (player.ultimateCharge >= 100) {
@@ -148,12 +168,14 @@ function startGame() {
     }
 
     function drawPlayer(context, player) {
-        context.fillStyle = player.color;
-        context.fillRect(player.x, player.y, player.width, player.height);
-        drawUltimateBar(context, player);
-        drawPercentage(context, player);
-        if (showHitboxes) {
-            drawHitbox(context, player);
+        if (player.visible) {
+            context.fillStyle = player.color;
+            context.fillRect(player.x, player.y, player.width, player.height);
+            drawUltimateBar(context, player);
+            drawPercentage(context, player);
+            if (showHitboxes) {
+                drawHitbox(context, player);
+            }
         }
     }
 
@@ -207,8 +229,9 @@ function startGame() {
     }
 
     function resetPlayer(player) {
+        const respawnHeight = 100; // Adjust this value to change the respawn height
+
         console.log("Resetting player:", player);
-    
         if (player.character === 1) {
             player.x = platforms[0].x + 50; // Spawn Player 1 on the left side of the platform
             console.log("Player 1 position:", player.x, player.y);
@@ -216,17 +239,19 @@ function startGame() {
             player.x = platforms[0].x + platforms[0].width - 100; // Spawn Player 2 on the right side of the platform
             console.log("Player 2 position:", player.x, player.y);
         }
+
+        player.y = respawnHeight;
         player.y = platforms[0].y - player.height;
         player.velocityX = 0;
         player.velocityY = 0;
         player.percentage = 0;
         player.ultimateCharge = 0;
         player.ultimateReady = false;
-        player.invincible = true; // Add invincibility on respawn
+        player.iFrames = true; // Add invincibility on respawn
     
         // Remove invincibility after 1 second
         setTimeout(() => {
-            player.invincible = false;
+            player.iFrames = false;
         }, 1000);
     }
 
@@ -247,7 +272,7 @@ function startGame() {
                 if (player.character === 1) {
                     context.fillStyle = 'lightblue';
                     context.fillRect(player.x + 50, player.y, 50, 50);
-                    if (checkHit(player, player2) && !player2.invincible) {
+                    if (checkHit(player, player2) && !player2.iFrames) {
                         player2.percentage += 10;
                         showHitVFX(player2);
                         screenShake(10, 500);
@@ -261,7 +286,7 @@ function startGame() {
                 } else if (player.character === 2) {
                     context.fillStyle = 'pink';
                     context.fillRect(player.x - 50, player.y, 50, 50);
-                    if (checkHit(player, player1) && !player1.invincible) {
+                    if (checkHit(player, player1) && !player1.iFrames) {
                         player1.percentage += 10;
                         showHitVFX(player1);
                         screenShake(10, 500);
@@ -295,7 +320,7 @@ function startGame() {
         if (player.character === 1) {
             context.fillStyle = 'lightblue';
             context.fillRect(player.x + 50, player.y, 50, 50);
-            if (checkHit(player, player2) && !player2.invincible) {
+            if (checkHit(player, player2) && !player2.iFrames) {
                 player2.percentage += 10;
                 showHitVFX(player2);
                 screenShake(10, 500);
@@ -309,7 +334,7 @@ function startGame() {
         } else if (player.character === 2) {
             context.fillStyle = 'pink';
             context.fillRect(player.x - 50, player.y, 50, 50);
-            if (checkHit(player, player1) && !player1.invincible) {
+            if (checkHit(player, player1) && !player1.iFrames) {
                 player1.percentage += 10;
                 showHitVFX(player1);
                 screenShake(10, 500);
@@ -456,6 +481,52 @@ function showHitVFX(player) {
         drawPlayer(context, player); // Redraw the player to fix the clearing issue
     }, 100);
 }
+
+function showFallVFX(player, duration = 2000) {
+    console.log("Showing fall VFX for player:", player);
+
+    const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
+    const beams = 20; // Increase the number of beams for a more splash-like effect
+    const maxBeamHeight = 1000;
+    const minBeamHeight = 500;
+
+    // Determine the direction of the effect based on the player's position
+    let angle = 0;
+    if (player.x < 0) {
+        angle = 90; // Player fell off the left side
+    } else if (player.x + player.width > canvas.width) {
+        angle = -90; // Player fell off the right side
+    } else if (player.y > canvas.height) {
+        angle = 0; // Player fell off the bottom
+    }
+
+    context.save();
+    context.translate(player.x + player.width / 2, player.y + player.height / 2);
+    context.rotate(angle * Math.PI / 180);
+
+    for (let i = 0; i < beams; i++) {
+        const color = colors[i % colors.length];
+        const beamHeight = Math.random() * (maxBeamHeight - minBeamHeight) + minBeamHeight;
+        const offsetX = (Math.random() - 0.5) * 100; // Random horizontal offset
+        const offsetY = (Math.random() - 0.5) * 1000; // Random vertical offset
+
+        const x = offsetX;
+        const y = player.height / 2 + offsetY;
+
+        context.fillStyle = color;
+        context.fillRect(x, y, 5, beamHeight);
+    }
+
+    context.restore();
+
+    // Clear the VFX after the specified duration
+    setTimeout(() => {
+        console.log("Clearing fall VFX for player:", player);
+        context.clearRect(0, 0, canvas.width, canvas.height);
+        // Redraw the players and other game elements here if needed
+    }, duration);
+}
+
 
 // Screen shake function
 function screenShake(intensity, duration) {
