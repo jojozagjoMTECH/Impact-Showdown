@@ -42,8 +42,7 @@ let player2 = {
     comboHits: 0,
     comboCooldown: false,
     isFalling: false,
-    iFrames: false,
-    visible: true
+    iFrames: false
 };
 
 let gameLoopRunning = false;
@@ -141,7 +140,7 @@ function startGame() {
             if (!player.isFalling) {
                 player.isFalling = true; // Mark the player as falling
                 player.visible = false; // Hide the player
-                showFallVFX(player, 1000); // Show VFX for 1 second
+                showFallVFX(player, 10000); // Show VFX for 1 second
                 screenShake(20, 500);
                 player.lives -= 1;
     
@@ -482,26 +481,32 @@ function showHitVFX(player) {
     }, 100);
 }
 
-function showFallVFX(player, duration = 2000) {
+function showFallVFX(player, duration = 1000) {
     console.log("Showing fall VFX for player:", player);
 
     const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
     const beams = 20; // Increase the number of beams for a more splash-like effect
     const maxBeamHeight = 1000;
-    const minBeamHeight = 500;
+    const minBeamHeight = 50;
+
+    // Capture the player's position and dimensions once
+    const playerX = player.x;
+    const playerY = player.y;
+    const playerWidth = player.width;
+    const playerHeight = player.height;
 
     // Determine the direction of the effect based on the player's position
     let angle = 0;
-    if (player.x < 0) {
+    if (playerX < 0) {
         angle = 90; // Player fell off the left side
-    } else if (player.x + player.width > canvas.width) {
+    } else if (playerX + playerWidth > canvas.width) {
         angle = -90; // Player fell off the right side
-    } else if (player.y > canvas.height) {
+    } else if (playerY > canvas.height) {
         angle = 0; // Player fell off the bottom
     }
 
     context.save();
-    context.translate(player.x + player.width / 2, player.y + player.height / 2);
+    context.translate(playerX + playerWidth / 2, playerY + playerHeight / 2);
     context.rotate(angle * Math.PI / 180);
 
     for (let i = 0; i < beams; i++) {
@@ -511,7 +516,7 @@ function showFallVFX(player, duration = 2000) {
         const offsetY = (Math.random() - 0.5) * 1000; // Random vertical offset
 
         const x = offsetX;
-        const y = player.height / 2 + offsetY;
+        const y = playerHeight / 2 + offsetY;
 
         context.fillStyle = color;
         context.fillRect(x, y, 5, beamHeight);
@@ -519,13 +524,20 @@ function showFallVFX(player, duration = 2000) {
 
     context.restore();
 
-    // Clear the VFX after the specified duration
-    setTimeout(() => {
-        console.log("Clearing fall VFX for player:", player);
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        // Redraw the players and other game elements here if needed
-    }, duration);
+    const startTime = performance.now();
+    function clearVFX(timestamp) {
+        if (timestamp - startTime < duration) {
+            requestAnimationFrame(clearVFX);
+        } else {
+            console.log("Clearing fall VFX for player:", player);
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            // Redraw the players and other game elements here if needed
+        }
+    }
+    requestAnimationFrame(clearVFX);
 }
+
+
 
 
 // Screen shake function
