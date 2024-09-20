@@ -135,14 +135,16 @@ function startGame() {
         } else if (!player.onGround) {
             player.onGround = false;
         }
-    
+        
+        // showFallVFX(player, 500);
+
         // Check for falling off the plaawtform
         if (player.y > canvas.height - 80) {
             if (!player.isFalling) {
                 player.isFalling = true; // Mark the player as falling
                 player.visible = false; // Hide the player
                 showFallVFX(player, 5000); // Show VFX for 1 second
-                screenShake(20, 500);
+                // screenShake(20, 500);
                 player.lives -= 1;
     
                 // Delay the resetPlayer call to allow the effect to show
@@ -414,6 +416,36 @@ function startGame() {
         }
     }
 
+    function showUltimateEffect(player) {
+    if (player.character === 1) {
+        // Character 1 ultimate effect (cutscene)
+        context.fillStyle = 'blue';
+        context.fillRect(player.x - 50, player.y - 50, 150, 150);
+        // Add cutscene logic here
+    } else if (player.character === 2) {
+        // Character 2 ultimate effect (long-range attack)
+        context.fillStyle = 'red';
+        context.fillRect(player.x - 50, player.y - 50, 150, 150);
+        // Add long-range attack logic here
+    }
+    setTimeout(() => {
+        context.clearRect(player.x - 50, player.y - 50, 150, 150);
+        drawPlayer(context, player); // Redraw the player to fix the clearing issue
+    }, 500);
+}
+
+// VFX for when a player gets hit
+function showHitVFX(player) {
+    const playerColor = player.color
+    player.color = 'white';
+    // context.fillRect(player.x, player.y, player.width, player.height);
+    setTimeout(() => {
+        // context.clearRect(player.x, player.y, player.width, player.height);
+        player.color = playerColor;
+        drawPlayer(context, player); // Redraw the player to fix the clearing issue
+    }, 100);
+}
+
     if (!gameLoopRunning) {
         gameLoopRunning = true;
         gameLoop();
@@ -454,34 +486,6 @@ document.getElementById('player2-melee').addEventListener('input', (event) => {
     document.getElementById('player2-melee-key').textContent = player2.controls.melee;
 });
 
-function showUltimateEffect(player) {
-    if (player.character === 1) {
-        // Character 1 ultimate effect (cutscene)
-        context.fillStyle = 'blue';
-        context.fillRect(player.x - 50, player.y - 50, 150, 150);
-        // Add cutscene logic here
-    } else if (player.character === 2) {
-        // Character 2 ultimate effect (long-range attack)
-        context.fillStyle = 'red';
-        context.fillRect(player.x - 50, player.y - 50, 150, 150);
-        // Add long-range attack logic here
-    }
-    setTimeout(() => {
-        context.clearRect(player.x - 50, player.y - 50, 150, 150);
-        drawPlayer(context, player); // Redraw the player to fix the clearing issue
-    }, 500);
-}
-
-// VFX for when a player gets hit
-function showHitVFX(player) {
-    context.fillStyle = 'rgba(255, 255, 0, 0.5)';
-    context.fillRect(player.x, player.y, player.width, player.height);
-    setTimeout(() => {
-        context.clearRect(player.x, player.y, player.width, player.height);
-        drawPlayer(context, player); // Redraw the player to fix the clearing issue
-    }, 100);
-}
-
 function showFallVFX(player, duration) {
     console.log("Showing fall VFX for player:", player);
 
@@ -516,17 +520,21 @@ function showFallVFX(player, duration) {
 
     let counter = 0;
     const intervalId = setInterval(() => {
+        console.log("Drawing VFX iteration:", counter);
         context.clearRect(0, 0, canvas.width, canvas.height); // Clear previous VFX
 
         // Draw the VFX
         for (let i = 0; i < beams; i++) {
             const color = colors[i % colors.length];
             const beamHeight = Math.random() * (maxBeamHeight - minBeamHeight) + minBeamHeight;
-            const offsetX = (Math.random() - 0.5) * 100; // Random horizontal offset
-            const offsetY = (Math.random() - 0.5) * 1000; // Random vertical offset
+            const offsetX = (Math.random() - 0.5) * playerWidth; // Adjusted horizontal offset
+            const offsetY = (Math.random() - 0.5) * playerHeight; // Adjusted vertical offset
 
-            const x = offsetX;
-            const y = playerHeight / 2 + offsetY;
+            // Ensure the offsets are within the canvas boundaries
+            const x = Math.max(0, Math.min(canvas.width, playerX + offsetX));
+            const y = Math.max(0, Math.min(canvas.height, playerY + offsetY));
+
+            console.log(`Drawing beam at (${x}, ${y}) with height ${beamHeight}`);
 
             context.fillStyle = color;
             context.fillRect(x, y, 5, beamHeight);
