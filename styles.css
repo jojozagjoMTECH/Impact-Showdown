@@ -11,6 +11,10 @@ body {
     display: none;
 }
 
+.flex {
+    display: flex;
+}
+
 #main-menu, #settings-menu, #character-selection, #map-selection, #game {
     position: absolute;
     top: 50%;
@@ -69,6 +73,20 @@ body {
 #settings-menu button:active {
     background-color: #3e8e41;
     transform: scale(0.95);
+}
+
+#map-selection {
+    gap: 20px; 
+}
+
+.map-preview {
+    background-color: rgba(0, 0, 0, 0.4);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 1, 0, 1);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 #game-canvas {

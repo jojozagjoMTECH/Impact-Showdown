@@ -49,15 +49,23 @@
     </div>
 
     <div id="map-selection" class="hidden">
-        <h2>Map Selection</h2>
-        <button class="map" data-map="1">Map 1</button>
-        <button class="map" data-map="2">Map 2</button>
+        <div class="map-preview">
+            <canvas id="map1-preview" width="200" height="150"></canvas>
+            <button class="map" data-map="map1">Map 1</button>
+        </div>
+        <div class="map-preview">
+            <canvas id="map2-preview" width="200" height="150"></canvas>
+            <button class="map" data-map="map2">Map 2</button>
+        </div>
+        <div class="map-preview">
+            <canvas id="map3-preview" width="200" height="150"></canvas>
+            <button class="map" data-map="map3">Map 3</button>
+        </div>
     </div>
-
     <div id="game" class="hidden">
         <canvas id="game-canvas"></canvas>
         <canvas id="vfxCanvas" style="position: absolute; top: 0; left: 0;"></canvas>
-        
+
         <div id="ui">
             <div id="player1-ui">
                 <p>Player 1 Ultimate: <span id="player1-ultimate-key">Q</span></p>

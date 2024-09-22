@@ -48,21 +48,33 @@ let player2 = {
 
 let gameLoopRunning = false;
 const gravity = 0.5;
-const canvas = document.getElementById('game-canvas');
-const context = canvas.getContext('2d');
+const gameCanvas = document.getElementById('game-canvas');
+const context = gameCanvas.getContext('2d');
 const vfxCanvas = document.getElementById('vfxCanvas');
 const vfxContext = vfxCanvas.getContext('2d');
 
 // Ensure canvas scales properly to fit the screen size
-canvas.width = window.innerWidth;
-canvas.height = window.innerHeight;
+gameCanvas.width = window.innerWidth;
+gameCanvas.height = window.innerHeight;
 vfxCanvas.width = window.innerWidth;
 vfxCanvas.height = window.innerHeight;
 
-const platforms = [
-    { x: canvas.width * 0.1, y: canvas.height * 0.8, width: canvas.width * 0.8, height: 20 },
-    { x: canvas.width * 0.3, y: canvas.height * 0.68, width: canvas.width * 0.4, height: 20 }
-];
+const maps = {
+    map1: [
+        { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
+        { x: 0.3, y: 0.68, width: 0.4, height: 0.02, allowDropThrough: true }
+    ],
+    map2: [
+        { x: 0.2, y: 0.8, width: 0.6, height: 0.02, allowDropThrough: false },
+        { x: 0.1, y: 0.68, width: 0.1, height: 0.02, allowDropThrough: true },
+        { x: 0.8, y: 0.68, width: 0.1, height: 0.02, allowDropThrough: true }
+    ],
+    map3: [
+        { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
+        { x: 0.2, y: 0.6, width: 0.6, height: 0.02, allowDropThrough: true },
+        { x: 0.3, y: 0.4, width: 0.4, height: 0.02, allowDropThrough: true }
+    ]
+};
 
 let showHitboxes = false;
 
@@ -94,24 +106,70 @@ document.querySelectorAll('.character').forEach(button => {
         } else {
             document.getElementById('character-selection').classList.add('hidden');
             document.getElementById('map-selection').classList.remove('hidden');
+            document.getElementById('map-selection').classList.add('flex');
         }
     });
 });
 
+// Maps loader
+function drawMapPreview(map, canvasId) {
+    const mapPreviewCanvas = document.getElementById(canvasId);
+    const mapPreviewContext = mapPreviewCanvas.getContext('2d');
+
+    mapPreviewContext.clearRect(0, 0, mapPreviewCanvas.width, mapPreviewCanvas.height);
+
+    map.forEach(platform => {
+        const x = platform.x * mapPreviewCanvas.width;
+        const y = platform.y * mapPreviewCanvas.height;
+        const width = platform.width * mapPreviewCanvas.width + 2;
+        const height = platform.height * mapPreviewCanvas.height + 2;
+
+        mapPreviewContext.fillStyle = platform.allowDropThrough ? 'rgba(0, 128, 0, 0.5)' : 'rgba(0, 128, 0, 1)';
+        mapPreviewContext.fillRect(x, y, width, height);
+    });
+}
+
+
+// Draw the map previews
+drawMapPreview(maps.map1, 'map1-preview');
+drawMapPreview(maps.map2, 'map2-preview');
+drawMapPreview(maps.map3, 'map3-preview');
+
+function scaleMapData(map, canvas) {
+    return map.map(platform => ({
+        x: platform.x * canvas.width,
+        y: platform.y * canvas.height,
+        width: platform.width * canvas.width,
+        height: platform.height * canvas.height,
+        allowDropThrough: platform.allowDropThrough
+    }));
+}
+
+// Handle map selection
 document.querySelectorAll('.map').forEach(button => {
     button.addEventListener('click', () => {
+        const selectedMap = button.getAttribute('data-map');
         document.getElementById('map-selection').classList.add('hidden');
         document.getElementById('game').classList.remove('hidden');
-        startGame();
+        document.getElementById('map-selection').classList.remove('flex');
+
+        // Scale the map data for the game canvas
+        const scaledMap = scaleMapData(maps[selectedMap], gameCanvas);
+        console.log(scaledMap)
+
+        startGame(scaledMap);
     });
 });
 
-function startGame() {
+function startGame(selectedMap) {
+    // Use the selected map data
+    platforms = selectedMap;
+
     resetPlayer(player1);
     resetPlayer(player2);
     vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
     function gameLoop() {
-        context.clearRect(0, 0, canvas.width, canvas.height);
+        context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
         drawPlatforms();
         updatePlayer(player1);
         updatePlayer(player2);
@@ -137,8 +195,8 @@ function startGame() {
         checkPlatformCollision(player);
     
         // Check for ground collision
-        if (player.y + player.height >= canvas.height) {
-            player.y = canvas.height - player.height;
+        if (player.y + player.height >= gameCanvas.height) {
+            player.y = gameCanvas.height - player.height;
             player.velocityY = 0;
             player.onGround = true;
             player.knockbackActive = false; // Deactivate knockback when player hits the ground
@@ -149,7 +207,7 @@ function startGame() {
         // showFallVFX(player, 1000);
 
         // Check for falling off the plaawtform
-        if (player.y > canvas.height - 80 || player.x < -player.width || player.x > canvas.width) {
+        if (player.y > gameCanvas.height - 80 || player.x < -player.width || player.x > gameCanvas.width) {
             if (!player.isFalling) {
                 player.isFalling = true; // Mark the player as falling
                 player.visible = false; // Hide the player
@@ -233,7 +291,7 @@ function startGame() {
         context.fillStyle = 'white';
         context.font = '20px Arial';
         context.fillText(`Player 1 Lives: ${player1.lives}`, 10, 30);
-        context.fillText(`Player 2 Lives: ${player2.lives}`, canvas.width - 150, 30);
+        context.fillText(`Player 2 Lives: ${player2.lives}`, gameCanvas.width - 150, 30);
     }
 
     function checkGameOver() {
@@ -422,8 +480,18 @@ function startGame() {
                 player.velocityX = -5;
                 break;
             case player.controls.down:
-                player.y += 20;
-                // player.onGround = false
+                // Check if the player is on a platform that allows drop through
+                const currentPlatform = platforms.find(platform => 
+                    player.x < platform.x + platform.width &&
+                    player.x + player.width > platform.x &&
+                    player.y + player.height >= platform.y &&
+                    player.y + player.height <= platform.y + platform.height
+                );
+    
+                if (currentPlatform && currentPlatform.allowDropThrough) {
+                    player.y += 35;
+                    // player.onGround = false
+                }
                 break;
             case player.controls.right:
                 player.velocityX = 5;
@@ -479,12 +547,12 @@ function showFallVFX(player, duration = 1000) {
     if (playerX < 0) {
         startX = 0;
         startY = playerY + playerHeight / 2;
-    } else if (playerX + playerWidth > canvas.width) {
-        startX = canvas.width;
+    } else if (playerX + playerWidth > gameCanvas.width) {
+        startX = gameCanvas.width;
         startY = playerY + playerHeight / 2;
-    } else if (playerY > canvas.height) {
+    } else if (playerY > gameCanvas.height) {
         startX = playerX + playerWidth / 2;
-        startY = canvas.height;
+        startY = gameCanvas.height;
     } else {
         startX = playerX + playerWidth / 2;
         startY = playerY + playerHeight / 2;
@@ -497,7 +565,7 @@ function showFallVFX(player, duration = 1000) {
             height: Math.random() * (maxBeamHeight - minBeamHeight) + minBeamHeight,
             offsetX: (Math.random() - 0.5) * playerWidth * 2,
             offsetY: (Math.random() - 0.5) * playerHeight,
-            startHeight: Math.random() * (canvas.height / 2 - 1000), // Random starting height
+            startHeight: Math.random() * (gameCanvas.height / 2 - 1000), // Random starting height
             progress: 0,
             opacity: 1
         });
@@ -511,7 +579,7 @@ function showFallVFX(player, duration = 1000) {
             beam.opacity = 1.1 - beam.progress;
 
             const x = Math.max(0, Math.min(vfxCanvas.width, startX + beam.offsetX));
-            const y = Math.max(0, Math.min(vfxCanvas.height, startY - beam.startHeight - beam.progress * (canvas.height / 2) + beam.offsetY));
+            const y = Math.max(0, Math.min(vfxCanvas.height, startY - beam.startHeight - beam.progress * (gameCanvas.height / 2) + beam.offsetY));
 
             vfxContext.fillStyle = beam.color;
             vfxContext.globalAlpha = beam.opacity;
@@ -530,12 +598,30 @@ function showFallVFX(player, duration = 1000) {
 }
 
 
-
-
     if (!gameLoopRunning) {
         gameLoopRunning = true;
         gameLoop();
     }
+}
+
+// Screen shake function
+function screenShake(intensity, duration) {
+    const originalStyle = gameCanvas.style.transform;
+    let startTime = Date.now();
+
+    function shake() {
+        const elapsed = Date.now() - startTime;
+        if (elapsed < duration) {
+            const x = (Math.random() - 0.5) * intensity;
+            const y = (Math.random() - 0.5) * intensity;
+            gameCanvas.style.transform = `translate(${x}px, ${y}px)`;
+            requestAnimationFrame(shake);
+        } else {
+            gameCanvas.style.transform = originalStyle;
+        }
+    }
+
+    shake();
 }
 
 document.getElementById('player1-controls').addEventListener('input', (event) => {
@@ -571,23 +657,3 @@ document.getElementById('player2-melee').addEventListener('input', (event) => {
     player2.controls.melee = event.target.value.toUpperCase();
     document.getElementById('player2-melee-key').textContent = player2.controls.melee;
 });
-
-// Screen shake function
-function screenShake(intensity, duration) {
-    const originalStyle = canvas.style.transform;
-    let startTime = Date.now();
-
-    function shake() {
-        const elapsed = Date.now() - startTime;
-        if (elapsed < duration) {
-            const x = (Math.random() - 0.5) * intensity;
-            const y = (Math.random() - 0.5) * intensity;
-            canvas.style.transform = `translate(${x}px, ${y}px)`;
-            requestAnimationFrame(shake);
-        } else {
-            canvas.style.transform = originalStyle;
-        }
-    }
-
-    shake();
-}
