@@ -38,16 +38,32 @@
         <h2>Character Selection</h2>
         <div id="player1-selection">
             <h3>Player 1</h3>
+            <div id="player1-preview" class="player-preview hidden">
+                <canvas id="player1-canvas" width="50" height="50"></canvas>
+                <p>Name: <span id="player1-name"></span></p>
+                <p>Ultimate: <span id="player1-ultimateName"></span></p>
+                <p id="player1-ultimate-description"></p>
+                <p>Ability: <span id="player1-ability"></span></p>
+                <p id="player1-ability-description"></p>
+            </div>
             <button class="character" data-player="1" data-character="1">Character 1</button>
             <button class="character" data-player="1" data-character="2">Character 2</button>
         </div>
         <div id="player2-selection" class="hidden">
             <h3>Player 2</h3>
+            <div id="player2-preview" class="player-preview hidden">
+                <canvas id="player2-canvas" width="50" height="50"></canvas>
+                <p>Name: <span id="player2-name"></span></p>
+                <p>Ultimate: <span id="player2-ultimateName"></span></p>
+                <p id="player2-ultimate-description"></p>
+                <p>Ability: <span id="player2-ability"></span></p>
+                <p id="player2-ability-description"></p>
+            </div>
             <button class="character" data-player="2" data-character="1">Character 1</button>
             <button class="character" data-player="2" data-character="2">Character 2</button>
         </div>
     </div>
-
+       
     <div id="map-selection" class="hidden">
         <div class="map-preview">
             <canvas id="map1-preview" width="200" height="150"></canvas>

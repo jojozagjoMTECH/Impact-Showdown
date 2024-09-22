@@ -3,14 +3,14 @@ let player1 = {
     y: 400,
     width: 50,
     height: 50,
-    color: 'blue',
+    color: '', // Will be updated based on selected character
     controls: { up: 'W', left: 'A', down: 'S', right: 'D', ultimate: 'Q', melee: 'E' },
     percentage: 0,
     ultimateCharge: 0,
     ultimateReady: false,
-    character: 1,
-    ultimateName: 'Blue Blast',
-    meleeName: 'Uppercut',
+    character: 0, // Will be updated based on selected character
+    ultimateName: '', // Will be updated based on selected character
+    meleeName: '', // Will be updated based on selected character
     lives: 3,
     onGround: false,
     velocityX: 0,
@@ -27,14 +27,14 @@ let player2 = {
     y: 400,
     width: 50,
     height: 50,
-    color: 'red',
+    color: '', // Will be updated based on selected character
     controls: { up: 'I', left: 'J', down: 'K', right: 'L', ultimate: 'U', melee: 'O' },
     percentage: 0,
     ultimateCharge: 0,
     ultimateReady: false,
-    character: 2,
-    ultimateName: 'Red Fury',
-    meleeName: 'Downslam',
+    character: 0, // Will be updated based on selected character
+    ultimateName: '', // Will be updated based on selected character
+    meleeName: '', // Will be updated based on selected character
     lives: 3,
     onGround: false,
     velocityX: 0,
@@ -45,6 +45,7 @@ let player2 = {
     iFrames: false,
     visible: true
 };
+
 
 let gameLoopRunning = false;
 const gravity = 0.5;
@@ -76,6 +77,29 @@ const maps = {
     ]
 };
 
+
+const characters = [
+    {
+        id: 1,
+        name: 'Red Guy',
+        color: 'rgb(159, 13, 15)',
+        ultimateName: 'Red Fury',
+        ultimateDescription: 'A furious red attack.',
+        abilityName: 'Uppercut',
+        abilityDescription: 'A strong upward punch.'
+    },
+    {
+        id: 2,
+        name: 'Blue Guy',
+        color: 'rgb(1, 55, 250)',
+        ultimateName: 'Blue Blast',
+        ultimateDescription: 'A powerful blast of blue energy.',
+        abilityName: 'Downslam',
+        abilityDescription: 'A powerful downward slam.'
+    }
+    // Add more characters here
+];
+
 let showHitboxes = false;
 
 document.getElementById('play-button').addEventListener('click', () => {
@@ -97,19 +121,78 @@ document.getElementById('toggle-hitboxes').addEventListener('change', (event) =>
     showHitboxes = event.target.checked;
 });
 
+function updatePlayerPreview(player, characterId) {
+    const character = characters.find(char => char.id === characterId);
+    const previewId = `player${player}-preview`;
+    const canvasId = `player${player}-canvas`;
+    const nameId = `player${player}-name`;
+    const ultimateId = `player${player}-ultimateName`;
+    const ultimateDescriptionId = `player${player}-ultimate-description`;
+    const abilityId = `player${player}-ability`;
+    const abilityDescriptionId = `player${player}-ability-description`;
+
+    // Update player preview
+    document.getElementById(previewId).classList.remove('hidden');
+    const canvas = document.getElementById(canvasId);
+    const context = canvas.getContext('2d');
+    context.clearRect(0, 0, canvas.width, canvas.height); // Clear previous drawing
+    context.fillStyle = character.color;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    document.getElementById(nameId).textContent = character.name;
+    document.getElementById(ultimateId).textContent = character.ultimateName;
+    document.getElementById(ultimateDescriptionId).textContent = character.ultimateDescription;
+    document.getElementById(abilityId).textContent = character.abilityName;
+    document.getElementById(abilityDescriptionId).textContent = character.abilityDescription;
+}
+
+// Initialize previews for all characters
 document.querySelectorAll('.character').forEach(button => {
+    const player = button.dataset.player;
+    const characterId = parseInt(button.dataset.character);
+    updatePlayerPreview(player, characterId);
+    
+    button.addEventListener('mouseover', (event) => {
+        const player = event.target.dataset.player;
+        const characterId = parseInt(event.target.dataset.character);
+        updatePlayerPreview(player, characterId);
+    });
+
     button.addEventListener('click', (event) => {
         const player = event.target.dataset.player;
+        const characterId = parseInt(event.target.dataset.character);
+        const character = characters.find(char => char.id === characterId);
+
+        // Update player properties
         if (player === '1') {
+            player1.color = character.color;
+            player1.character = character.id;
+            player1.ultimateName = character.ultimateName;
+            player1.meleeName = character.abilityName;
             document.getElementById('player1-selection').classList.add('hidden');
             document.getElementById('player2-selection').classList.remove('hidden');
         } else {
+            player2.color = character.color;
+            player2.character = character.id;
+            player2.ultimateName = character.ultimateName;
+            player2.meleeName = character.abilityName;
+
+            // Check if both players have the same character and adjust Player 2's color
+            if (player1.character === player2.character) {
+                // player2.color = lightenColor(player2.color, 20); // Lighten color by 20%
+            }
+
             document.getElementById('character-selection').classList.add('hidden');
             document.getElementById('map-selection').classList.remove('hidden');
             document.getElementById('map-selection').classList.add('flex');
         }
     });
 });
+
+function lightenColor(color, percent) {
+    col = parseInt(color, 16);
+    return (((col & 0x0000FF) + percent) | ((((col >> 8) & 0x00FF) + percent) << 8) | (((col >> 16) + percent) << 16)).toString(16);
+}
+
 
 // Maps loader
 function drawMapPreview(map, canvasId) {
@@ -180,10 +263,6 @@ function startGame(selectedMap) {
         requestAnimationFrame(gameLoop);
     }
 
-    function getOtherPlayer(currentPlayer) {
-        return currentPlayer === player1 ? player2 : player1;
-    }
-
     function updatePlayer(player) {
 
         // Apply gravity
@@ -211,7 +290,7 @@ function startGame(selectedMap) {
             if (!player.isFalling) {
                 player.isFalling = true; // Mark the player as falling
                 player.visible = false; // Hide the player
-                let otherPlayer = getOtherPlayer(player);
+                let otherPlayer = player === player2 ? player1 : player2;;
                 showFallVFX(player, 3000); // Show VFX for 1 second
                 screenShake(20, 1000);
                 // player.lives -= 1;
@@ -304,16 +383,16 @@ function startGame(selectedMap) {
 
     function resetPlayer(player) {
         const respawnHeight = 1000; // Adjust this value to change the respawn height
-
+    
         console.log("Resetting player:", player);
-        if (player.character === 1) {
+        if (player === player1) {
             player.x = platforms[0].x + 50; // Spawn Player 1 on the left side of the platform
             console.log("Player 1 position:", player.x, player.y);
-        } else {
+        } else if (player === player2) {
             player.x = platforms[0].x + platforms[0].width - 100; // Spawn Player 2 on the right side of the platform
             console.log("Player 2 position:", player.x, player.y);
         }
-
+    
         player.y = respawnHeight;
         player.y = platforms[0].y - player.height;
         player.velocityX = 0;
@@ -340,96 +419,85 @@ function startGame(selectedMap) {
 
     function useUltimate(player) {
         if (player.ultimateReady) {
-            function useMelee(player) {
-                if (player.comboCooldown) return;
-            
-                if (player.character === 1) {
-                    context.fillStyle = 'lightblue';
-                    context.fillRect(player.x + 50, player.y, 50, 50);
-                    if (checkHit(player, player2) && !player2.iFrames) {
-                        player2.percentage += 10;
-                        showHitVFX(player2);
-                        screenShake(10, 500);
-                        player.ultimateCharge += 10;
+            const opponent = player === player1 ? player2 : player1;
+    
+            switch (player.character) {
+                case 1: // Red Fury's Ultimate
+                    context.fillStyle = 'maroon';
+                    context.fillRect(player.x + 50, player.y, 100, 100); // Larger hitbox for ultimate
+                    if (checkHit(player, opponent) && !opponent.iFrames) {
+                        opponent.percentage += 30; // Higher damage for ultimate
+                        showHitVFX(opponent);
+                        screenShake(5, 500);
                         // Scale knockback based on percentage
-                        const knockback = player2.percentage;
-                        player2.velocityX = (player2.x - player.x) + knockback;
-                        player2.velocityY = -5 * knockback;
-                        player2.knockbackActive = true;
+                        const knockback = opponent.percentage * 0.05;
+                        opponent.velocityX = (opponent.x - player.x) * knockback;
+                        opponent.velocityY = -10 * knockback;
+                        opponent.knockbackActive = true;
                     }
-                } else if (player.character === 2) {
-                    context.fillStyle = 'pink';
-                    context.fillRect(player.x - 50, player.y, 50, 50);
-                    if (checkHit(player, player1) && !player1.iFrames) {
-                        player1.percentage += 10;
-                        showHitVFX(player1);
-                        screenShake(10, 500);
-                        player.ultimateCharge += 10;
-                        // Scale knockback based on percentage
-                        const knockback = player1.percentage;
-                        player1.velocityX = (player1.x - player.x) + knockback;
-                        player1.velocityY = -5 * knockback;
-                        player1.knockbackActive = true;
-                    }
-                }
-            
-                player.comboHits += 1;
-                if (player.comboHits >= 4) {
-                    player.comboCooldown = true;
+                    break;
+                case 2: // Blue Blast's Ultimate
+                    // Make the player jump up in the air
+                    player.velocityY = -15;
                     setTimeout(() => {
-                        player.comboHits = 0;
-                        player.comboCooldown = false;
-                    }, 1000);
-                }
-            }(player);
+                        // Shoot a blue laser beam at the opponent
+                        context.fillStyle = 'blue';
+                        context.fillRect(player.x, player.y - 50, 200, 10); // Laser beam
+                        if (checkHit(player, opponent) && !opponent.iFrames) {
+                            opponent.percentage += 30; // Higher damage for ultimate
+                            showHitVFX(opponent);
+                            screenShake(5, 500);
+                            // Scale knockback based on percentage
+                            const knockback = opponent.percentage * 0.05;
+                            opponent.velocityX = (opponent.x - player.x) * knockback;
+                            opponent.velocityY = -10 * knockback;
+                            opponent.knockbackActive = true;
+                        }
+                    }, 500); // Delay to simulate the jump
+                    break;
+                // Add more cases for additional characters
+                default:
+                    console.log('Unknown character ultimate');
+            }
+    
             player.ultimateCharge = 0;
             player.ultimateReady = false;
         }
     }
+    
 
     // Update useMelee function to include scaled knockback
     function useMelee(player) {
         if (player.comboCooldown) return;
-    
-        if (player.character === 1) {
-            context.fillStyle = 'lightblue';
-            context.fillRect(player.x + 50, player.y, 50, 50);
-            if (checkHit(player, player2) && !player2.iFrames) {
-                player2.percentage += 10;
-                showHitVFX(player2);
-                screenShake(3, 500);
-                player.ultimateCharge += 10;
-                // Scale knockback based on percentage
-                const knockback = player2.percentage * 0.01;
-                player2.velocityX = (player2.x - player.x) * knockback;
-                player2.velocityY = -5 * knockback;
-                player2.knockbackActive = true;
-            }
-        } else if (player.character === 2) {
-            context.fillStyle = 'pink';
-            context.fillRect(player.x - 50, player.y, 50, 50);
-            if (checkHit(player, player1) && !player1.iFrames) {
-                player1.percentage += 10;
-                showHitVFX(player1);
-                screenShake(3, 500);
-                player.ultimateCharge += 10;
-                // Scale knockback based on percentage
-                const knockback = player1.percentage * 0.01;
-                player1.velocityX = (player1.x - player.x) * knockback;
-                player1.velocityY = -5 * knockback;
-                player1.knockbackActive = true;
-            }
+
+        const opponent = player === player1 ? player2 : player1;
+        const hitboxColor = player.character === 1 ? 'lightblue' : 'pink';
+        const hitboxOffset = player.character === 1 ? 50 : -50;
+
+        context.fillStyle = hitboxColor;
+        context.fillRect(player.x + hitboxOffset, player.y, 50, 50);
+
+        if (checkHit(player, opponent) && !opponent.iFrames) {
+            opponent.percentage += 10;
+            showHitVFX(opponent);
+            screenShake(3, 500);
+            player.ultimateCharge += 10;
+            // Scale knockback based on percentage
+            const knockback = opponent.percentage * 0.01;
+            opponent.velocityX = (opponent.x - player.x) * knockback;
+            opponent.velocityY = -5 * knockback;
+            opponent.knockbackActive = true;
         }
-    
+
         player.comboHits += 1;
-        if (player.comboHits >= 4) {
-            player.comboCooldown = true;
-            setTimeout(() => {
-                player.comboHits = 0;
-                player.comboCooldown = false;
-            }, 1000);
-        }
+    if (player.comboHits >= 4) {
+        player.comboCooldown = true;
+        setTimeout(() => {
+            player.comboHits = 0;
+            player.comboCooldown = false;
+        }, 1000);
     }
+}
 
 
     function checkHit(attacker, defender) {
