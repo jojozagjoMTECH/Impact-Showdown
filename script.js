@@ -136,7 +136,7 @@ function startGame() {
             player.onGround = false;
         }
         
-        // showFallVFX(player, 500);
+        // showFallVFX(player, 1000);
 
         // Check for falling off the plaawtform
         if (player.y > canvas.height - 80) {
@@ -186,6 +186,9 @@ function startGame() {
         context.fillRect(player.x, player.y - 10, player.width, 5);
         context.fillStyle = 'yellow';
         context.fillRect(player.x, player.y - 10, player.width * (player.ultimateCharge / 100), 5);
+        if (player.ultimateCharge > 100) {
+            player.ultimateCharge = 100;
+        }
     }
 
     function drawPercentage(context, player) {
@@ -446,53 +449,14 @@ function showHitVFX(player) {
     }, 100);
 }
 
-    if (!gameLoopRunning) {
-        gameLoopRunning = true;
-        gameLoop();
-    }
-}
-
-document.getElementById('player1-controls').addEventListener('input', (event) => {
-    const controls = event.target.value.toUpperCase().split('');
-    player1.controls = { up: controls[0], left: controls[1], down: controls[2], right: controls[3], ultimate: player1.controls.ultimate, melee: player1.controls.melee };
-    document.getElementById('player1-ultimate-key').textContent = player1.controls.ultimate;
-    document.getElementById('player1-melee-key').textContent = player1.controls.melee;
-});
-
-document.getElementById('player1-ultimate').addEventListener('input', (event) => {
-    player1.controls.ultimate = event.target.value.toUpperCase();
-    document.getElementById('player1-ultimate-key').textContent = player1.controls.ultimate;
-});
-
-document.getElementById('player1-melee').addEventListener('input', (event) => {
-    player1.controls.melee = event.target.value.toUpperCase();
-    document.getElementById('player1-melee-key').textContent = player1.controls.melee;
-});
-
-document.getElementById('player2-controls').addEventListener('input', (event) => {
-    const controls = event.target.value.toUpperCase().split('');
-    player2.controls = { up: controls[0], left: controls[1], down: controls[2], right: controls[3], ultimate: player2.controls.ultimate, melee: player2.controls.melee };
-    document.getElementById('player2-ultimate-key').textContent = player2.controls.ultimate;
-    document.getElementById('player2-melee-key').textContent = player2.controls.melee;
-});
-
-document.getElementById('player2-ultimate').addEventListener('input', (event) => {
-    player2.controls.ultimate = event.target.value.toUpperCase();
-    document.getElementById('player2-ultimate-key').textContent = player2.controls.ultimate;
-});
-
-document.getElementById('player2-melee').addEventListener('input', (event) => {
-    player2.controls.melee = event.target.value.toUpperCase();
-    document.getElementById('player2-melee-key').textContent = player2.controls.melee;
-});
-
-function showFallVFX(player, duration) {
+function showFallVFX(player, duration = 1000) {
     console.log("Showing fall VFX for player:", player);
 
     const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
     const beams = 20; // Increase the number of beams for a more splash-like effect
     const maxBeamHeight = 1000;
     const minBeamHeight = 50;
+    const beamWidth = 10; // Increase the width of the beams
     const intervalTime = 100; // Time between each VFX creation and removal in milliseconds
 
     // Calculate the number of iterations based on the duration and interval time
@@ -537,7 +501,7 @@ function showFallVFX(player, duration) {
             console.log(`Drawing beam at (${x}, ${y}) with height ${beamHeight}`);
 
             context.fillStyle = color;
-            context.fillRect(x, y, 5, beamHeight);
+            context.fillRect(x, y, beamWidth, beamHeight); // Use the thicker beam width
         }
 
         counter++;
@@ -550,8 +514,60 @@ function showFallVFX(player, duration) {
     }, intervalTime); // Repeat every intervalTime milliseconds
 
     context.restore();
+
+    const startTime = performance.now();
+    function clearVFX(timestamp) {
+        if (timestamp - startTime < duration) {
+            requestAnimationFrame(clearVFX);
+        } else {
+            console.log("Clearing fall VFX for player:", player);
+            context.clearRect(0, 0, canvas.width, canvas.height);
+            // Redraw the players and other game elements here if needed
+        }
+    }
+    requestAnimationFrame(clearVFX);
 }
 
+
+    if (!gameLoopRunning) {
+        gameLoopRunning = true;
+        gameLoop();
+    }
+}
+
+document.getElementById('player1-controls').addEventListener('input', (event) => {
+    const controls = event.target.value.toUpperCase().split('');
+    player1.controls = { up: controls[0], left: controls[1], down: controls[2], right: controls[3], ultimate: player1.controls.ultimate, melee: player1.controls.melee };
+    document.getElementById('player1-ultimate-key').textContent = player1.controls.ultimate;
+    document.getElementById('player1-melee-key').textContent = player1.controls.melee;
+});
+
+document.getElementById('player1-ultimate').addEventListener('input', (event) => {
+    player1.controls.ultimate = event.target.value.toUpperCase();
+    document.getElementById('player1-ultimate-key').textContent = player1.controls.ultimate;
+});
+
+document.getElementById('player1-melee').addEventListener('input', (event) => {
+    player1.controls.melee = event.target.value.toUpperCase();
+    document.getElementById('player1-melee-key').textContent = player1.controls.melee;
+});
+
+document.getElementById('player2-controls').addEventListener('input', (event) => {
+    const controls = event.target.value.toUpperCase().split('');
+    player2.controls = { up: controls[0], left: controls[1], down: controls[2], right: controls[3], ultimate: player2.controls.ultimate, melee: player2.controls.melee };
+    document.getElementById('player2-ultimate-key').textContent = player2.controls.ultimate;
+    document.getElementById('player2-melee-key').textContent = player2.controls.melee;
+});
+
+document.getElementById('player2-ultimate').addEventListener('input', (event) => {
+    player2.controls.ultimate = event.target.value.toUpperCase();
+    document.getElementById('player2-ultimate-key').textContent = player2.controls.ultimate;
+});
+
+document.getElementById('player2-melee').addEventListener('input', (event) => {
+    player2.controls.melee = event.target.value.toUpperCase();
+    document.getElementById('player2-melee-key').textContent = player2.controls.melee;
+});
 
 // Screen shake function
 function screenShake(intensity, duration) {
