@@ -50,9 +50,14 @@ let gameLoopRunning = false;
 const gravity = 0.5;
 const canvas = document.getElementById('game-canvas');
 const context = canvas.getContext('2d');
+const vfxCanvas = document.getElementById('vfxCanvas');
+const vfxContext = vfxCanvas.getContext('2d');
+
 // Ensure canvas scales properly to fit the screen size
 canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
+vfxCanvas.width = window.innerWidth;
+vfxCanvas.height = window.innerHeight;
 
 const platforms = [
     { x: canvas.width * 0.1, y: canvas.height * 0.8, width: canvas.width * 0.8, height: 20 },
@@ -104,6 +109,7 @@ document.querySelectorAll('.map').forEach(button => {
 function startGame() {
     resetPlayer(player1);
     resetPlayer(player2);
+    vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
     function gameLoop() {
         context.clearRect(0, 0, canvas.width, canvas.height);
         drawPlatforms();
@@ -453,67 +459,61 @@ function showFallVFX(player, duration = 1000) {
     console.log("Showing fall VFX for player:", player);
 
     const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
-    const beams = 20; // Increase the number of beams for a more splash-like effect
+    const beams = 20;
     const maxBeamHeight = 1000;
     const minBeamHeight = 50;
-    const beamWidth = 10; // Increase the width of the beams
-    const intervalTime = 100; // Time between each VFX creation and removal in milliseconds
+    const beamWidth = 10;
+    const intervalTime = 100;
 
-    // Calculate the number of iterations based on the duration and interval time
     const iterations = Math.floor(duration / intervalTime);
 
-    // Capture the player's position and dimensions once
     const playerX = player.x;
     const playerY = player.y;
     const playerWidth = player.width;
     const playerHeight = player.height;
 
-    // Determine the direction of the effect based on the player's position
     let angle = 0;
     if (playerX < 0) {
-        angle = 90; // Player fell off the left side
+        angle = 90;
     } else if (playerX + playerWidth > canvas.width) {
-        angle = -90; // Player fell off the right side
+        angle = -90;
     } else if (playerY > canvas.height) {
-        angle = 0; // Player fell off the bottom
+        angle = 0;
     }
 
-    context.save();
-    context.translate(playerX + playerWidth / 2, playerY + playerHeight / 2);
-    context.rotate(angle * Math.PI / 180);
+    vfxContext.save();
+    vfxContext.translate(playerX + playerWidth / 2, playerY + playerHeight / 2);
+    vfxContext.rotate(angle * Math.PI / 180);
 
     let counter = 0;
     const intervalId = setInterval(() => {
         console.log("Drawing VFX iteration:", counter);
-        context.clearRect(0, 0, canvas.width, canvas.height); // Clear previous VFX
+        vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
 
-        // Draw the VFX
         for (let i = 0; i < beams; i++) {
             const color = colors[i % colors.length];
             const beamHeight = Math.random() * (maxBeamHeight - minBeamHeight) + minBeamHeight;
-            const offsetX = (Math.random() - 0.5) * playerWidth; // Adjusted horizontal offset
-            const offsetY = (Math.random() - 0.5) * playerHeight; // Adjusted vertical offset
+            const offsetX = (Math.random() - 0.5) * playerWidth;
+            const offsetY = (Math.random() - 0.5) * playerHeight;
 
-            // Ensure the offsets are within the canvas boundaries
-            const x = Math.max(0, Math.min(canvas.width, playerX + offsetX));
-            const y = Math.max(0, Math.min(canvas.height, playerY + offsetY));
+            const x = Math.max(0, Math.min(vfxCanvas.width, playerX + offsetX));
+            const y = Math.max(0, Math.min(vfxCanvas.height, playerY + offsetY));
 
             console.log(`Drawing beam at (${x}, ${y}) with height ${beamHeight}`);
 
-            context.fillStyle = color;
-            context.fillRect(x, y, beamWidth, beamHeight); // Use the thicker beam width
+            vfxContext.fillStyle = color;
+            vfxContext.fillRect(x, y, beamWidth, beamHeight);
         }
 
         counter++;
         if (counter >= iterations) {
-            clearInterval(intervalId); // Stop the interval after the specified duration
-            context.clearRect(0, 0, canvas.width, canvas.height); // Clear the VFX
+            clearInterval(intervalId);
+            vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
             console.log("Clearing fall VFX for player:", player);
-            // Redraw the players and other game elements here if needed
         }
-    }, intervalTime); // Repeat every intervalTime milliseconds
+    }, intervalTime);
 
-    context.restore();
+    vfxContext.restore();
 
     const startTime = performance.now();
     function clearVFX(timestamp) {
@@ -521,12 +521,12 @@ function showFallVFX(player, duration = 1000) {
             requestAnimationFrame(clearVFX);
         } else {
             console.log("Clearing fall VFX for player:", player);
-            context.clearRect(0, 0, canvas.width, canvas.height);
-            // Redraw the players and other game elements here if needed
+            vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
         }
     }
     requestAnimationFrame(clearVFX);
 }
+
 
 
     if (!gameLoopRunning) {
