@@ -54,14 +54,14 @@ const vfxCanvas = document.getElementById('vfxCanvas');
 const vfxContext = vfxCanvas.getContext('2d');
 
 // Ensure canvas scales properly to fit the screen size
-canvas.width = window.innerWidth + 100;
+canvas.width = window.innerWidth;
 canvas.height = window.innerHeight;
-vfxCanvas.width = window.innerWidth + 100;
+vfxCanvas.width = window.innerWidth;
 vfxCanvas.height = window.innerHeight;
 
 const platforms = [
     { x: canvas.width * 0.1, y: canvas.height * 0.8, width: canvas.width * 0.8, height: 20 },
-    { x: canvas.width * 0.3, y: canvas.height * 0.6, width: canvas.width * 0.4, height: 20 }
+    { x: canvas.width * 0.3, y: canvas.height * 0.68, width: canvas.width * 0.4, height: 20 }
 ];
 
 let showHitboxes = false;
@@ -149,13 +149,13 @@ function startGame() {
         // showFallVFX(player, 1000);
 
         // Check for falling off the plaawtform
-        if (player.y > canvas.height - 80 || player.x < 0 || player.x > canvas.width) {
+        if (player.y > canvas.height - 80 || player.x < -player.width || player.x > canvas.width) {
             if (!player.isFalling) {
                 player.isFalling = true; // Mark the player as falling
                 player.visible = false; // Hide the player
-                let otherPlayer = getOtherPlayer(currentPlayer);
-                showFallVFX(otherPlayer.percentage, 3000); // Show VFX for 1 second
-                screenShake(20, 500);
+                let otherPlayer = getOtherPlayer(player);
+                showFallVFX(player, 3000); // Show VFX for 1 second
+                screenShake(20, 1000);
                 // player.lives -= 1;
     
                 // Delay the resetPlayer call to allow the effect to show
@@ -221,7 +221,7 @@ function startGame() {
             if (player.x < platform.x + platform.width &&
                 player.x + player.width > platform.x &&
                 player.y + player.height >= platform.y &&
-                player.y + player.height <= platform.y + 1) { // Allow a small margin for error
+                player.y + player.height <= platform.y + platform.height) { // Adjusted margin for error
                 player.y = platform.y - player.height;
                 player.velocityY = 0;
                 player.onGround = true;
@@ -245,7 +245,7 @@ function startGame() {
     }
 
     function resetPlayer(player) {
-        const respawnHeight = 100; // Adjust this value to change the respawn height
+        const respawnHeight = 1000; // Adjust this value to change the respawn height
 
         console.log("Resetting player:", player);
         if (player.character === 1) {
@@ -339,7 +339,7 @@ function startGame() {
             if (checkHit(player, player2) && !player2.iFrames) {
                 player2.percentage += 10;
                 showHitVFX(player2);
-                screenShake(10, 500);
+                screenShake(3, 500);
                 player.ultimateCharge += 10;
                 // Scale knockback based on percentage
                 const knockback = player2.percentage * 0.01;
@@ -353,7 +353,7 @@ function startGame() {
             if (checkHit(player, player1) && !player1.iFrames) {
                 player1.percentage += 10;
                 showHitVFX(player1);
-                screenShake(10, 500);
+                screenShake(3, 500);
                 player.ultimateCharge += 10;
                 // Scale knockback based on percentage
                 const knockback = player1.percentage * 0.01;
@@ -414,7 +414,7 @@ function startGame() {
         switch (key) {
             case player.controls.up:
                 if (player.onGround) {
-                    player.velocityY = -10;
+                    player.velocityY = -15;
                     player.onGround = false;
                 }
                 break;
@@ -422,7 +422,8 @@ function startGame() {
                 player.velocityX = -5;
                 break;
             case player.controls.down:
-                player.y += 5;
+                player.y += 20;
+                // player.onGround = false
                 break;
             case player.controls.right:
                 player.velocityX = 5;
