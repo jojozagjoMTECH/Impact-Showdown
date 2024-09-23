@@ -430,14 +430,7 @@ function startGame(selectedMap) {
                     context.fillStyle = 'maroon';
                     context.fillRect(player.x + 50, player.y, 100, 100); // Larger hitbox for ultimate
                     if (checkHit(player, opponent) && !opponent.iFrames) {
-                        opponent.percentage += 30; // Higher damage for ultimate
-                        showHitVFX(opponent);
-                        screenShake(5, 500);
-                        // Scale knockback based on percentage
-                        const knockback = opponent.percentage * 0.05;
-                        opponent.velocityX = (opponent.x - player.x) * knockback;
-                        opponent.velocityY = -10 * knockback;
-                        opponent.knockbackActive = true;
+                        playCutscene(player, opponent);
                     }
                     break;
                 case 2: // Blue Blast's Ultimate
@@ -606,6 +599,37 @@ function startGame(selectedMap) {
         gameLoopRunning = true;
         gameLoop();
     }
+}
+
+function playCutscene(player, opponent) {
+    console.log("Playing cutscene for player:", player);
+
+    // Example cutscene logic
+    const cutsceneDuration = 3000; // 3 seconds
+    const originalVelocityX = player.velocityX;
+    const originalVelocityY = player.velocityY;
+
+    // Freeze players during cutscene
+    player.velocityX = 0;
+    player.velocityY = 0;
+    opponent.velocityX = 0;
+    opponent.velocityY = 0;
+
+    // Display cutscene visuals
+    context.fillStyle = 'black';
+    context.fillRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+    context.fillStyle = 'white';
+    context.font = '30px Arial';
+    context.fillText('Red Fury Ultimate!', vfxCanvas.width / 2 - 100, vfxCanvas.height / 2);
+
+    setTimeout(() => {
+        // End cutscene and restore player velocities
+        player.velocityX = originalVelocityX;
+        player.velocityY = originalVelocityY;
+        opponent.velocityX = originalVelocityX;
+        opponent.velocityY = originalVelocityY;
+        console.log("Cutscene ended for player:", player);
+    }, cutsceneDuration);
 }
 
 // Screen shake function
