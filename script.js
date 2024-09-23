@@ -259,7 +259,6 @@ function startGame(selectedMap) {
     resetPlayer(player2);
     vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
     function gameLoop() {
-        console.log(showImpactFrames)
         context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
         drawPlatforms();
         updatePlayer(player1);
@@ -570,7 +569,6 @@ function startGame(selectedMap) {
 
     function applyImpactFrames(player, opponent, platforms, duration = 100, switchInterval = 50) {
         if (showImpactFrames) {
-            console.log(showImpactFrames)
             console.log("Applying impact frames");
         
             // Save original styles
@@ -641,15 +639,15 @@ function startGame(selectedMap) {
         if (playerX < 0) {
             startX = 0;
             startY = playerY + playerHeight / 2;
+            console.log("bottom")
         } else if (playerX + playerWidth > gameCanvas.width) {
             startX = gameCanvas.width;
             startY = playerY + playerHeight / 2;
-        } else if (playerY > gameCanvas.height) {
-            startX = playerX + playerWidth / 2;
-            startY = gameCanvas.height;
+            console.log("left")
         } else {
             startX = playerX + playerWidth / 2;
             startY = playerY + playerHeight / 2;
+            console.log("bottom")
         }
     
         const beamsData = [];
