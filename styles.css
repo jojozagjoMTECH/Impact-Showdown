@@ -76,29 +76,22 @@ body {
 }
 
 #character-selection {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: rgba(0, 0, 0, 0.8); /* Semi-transparent background */
-    padding: 20px; /* Add some padding */
-    border-radius: 10px; /* Rounded corners */
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3); /* Shadow effect */
-    color: white; /* Text color */
-    text-align: center; /* Center the text */
-    font-family: 'Arial', sans-serif; /* Font style */
+    background-color: rgba(0, 0, 0, 0.4);
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 1, 0, 1);
 }
 
 .player-preview {
-    margin-top: 10px; /* Add some margin on top */
-    text-align: left; /* Align text to the left */
+    margin-top: 10px;
+    text-align: left;
 }
 
 canvas {
-    border: 2px solid white; /* Add a border to the canvas */
-    border-radius: 5px; /* Rounded corners for the canvas */
-    display: block; /* Make canvas a block element */
-    margin: 0 auto; /* Center the canvas */
+    border: 1px solid white;
+    border-radius: 5px;
+    display: block;
+    margin: 0 auto;
 }a
 
 #map-selection {

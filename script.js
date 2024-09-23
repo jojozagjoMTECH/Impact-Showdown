@@ -19,7 +19,8 @@ let player1 = {
     comboCooldown: false,
     isFalling: false,
     iFrames: false,
-    visible: true
+    visible: true,
+    ignoreCollisions: false
 };
 
 let player2 = {
@@ -43,7 +44,8 @@ let player2 = {
     comboCooldown: false,
     isFalling: false,
     iFrames: false,
-    visible: true
+    visible: true,
+    ignoreCollisions: false
 };
 
 
@@ -72,8 +74,8 @@ const maps = {
     ],
     map3: [
         { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
-        { x: 0.2, y: 0.6, width: 0.6, height: 0.02, allowDropThrough: true },
-        { x: 0.3, y: 0.4, width: 0.4, height: 0.02, allowDropThrough: true }
+        { x: 0.2, y: 0.65, width: 0.6, height: 0.02, allowDropThrough: true },
+        { x: 0.3, y: 0.55, width: 0.4, height: 0.02, allowDropThrough: true }
     ]
 };
 
@@ -271,7 +273,9 @@ function startGame(selectedMap) {
         player.x += player.velocityX;
     
         // Check for platform collision
+        if (player.ignoreCollisions = true) {
         checkPlatformCollision(player);
+        }   
     
         // Check for ground collision
         if (player.y + player.height >= gameCanvas.height) {
@@ -399,7 +403,7 @@ function startGame(selectedMap) {
         player.velocityY = 0;
         player.percentage = 0;
         player.ultimateCharge = 0;
-        player.ultimateReady = false;
+        player.ultimateReady = true;
         player.iFrames = true; // Add invincibility on respawn
     
         // Remove invincibility after 1 second
@@ -438,11 +442,12 @@ function startGame(selectedMap) {
                     break;
                 case 2: // Blue Blast's Ultimate
                     // Make the player jump up in the air
-                    player.velocityY = -15;
+                    player.velocityY = -20;
+                    player.ignoreCollisions = true
                     setTimeout(() => {
+                        player.ignoreCollisions = false
                         // Shoot a blue laser beam at the opponent
-                        context.fillStyle = 'blue';
-                        context.fillRect(player.x, player.y - 50, 200, 10); // Laser beam
+
                         if (checkHit(player, opponent) && !opponent.iFrames) {
                             opponent.percentage += 30; // Higher damage for ultimate
                             showHitVFX(opponent);
@@ -583,88 +588,19 @@ function startGame(selectedMap) {
         context.clearRect(player.x - 50, player.y - 50, 150, 150);
         drawPlayer(context, player); // Redraw the player to fix the clearing issue
     }, 500);
-}
-
-// VFX for when a player gets hit
-function showHitVFX(player) {
-    const playerColor = player.color
-    player.color = 'white';
-    // context.fillRect(player.x, player.y, player.width, player.height);
-    setTimeout(() => {
-        // context.clearRect(player.x, player.y, player.width, player.height);
-        player.color = playerColor;
-        drawPlayer(context, player); // Redraw the player to fix the clearing issue
-    }, 100);
-}
-
-function showFallVFX(player, duration = 1000) {
-    console.log("Showing fall VFX for player:", player);
-
-    const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
-    const beams = 20;
-    const maxBeamHeight = 3000;
-    const minBeamHeight = 500;
-    const beamWidth = 10;
-
-    const playerX = player.x;
-    const playerY = player.y;
-    const playerWidth = player.width;
-    const playerHeight = player.height;
-
-    let startX, startY;
-    if (playerX < 0) {
-        startX = 0;
-        startY = playerY + playerHeight / 2;
-    } else if (playerX + playerWidth > gameCanvas.width) {
-        startX = gameCanvas.width;
-        startY = playerY + playerHeight / 2;
-    } else if (playerY > gameCanvas.height) {
-        startX = playerX + playerWidth / 2;
-        startY = gameCanvas.height;
-    } else {
-        startX = playerX + playerWidth / 2;
-        startY = playerY + playerHeight / 2;
     }
 
-    const beamsData = [];
-    for (let i = 0; i < beams; i++) {
-        beamsData.push({
-            color: colors[i % colors.length],
-            height: Math.random() * (maxBeamHeight - minBeamHeight) + minBeamHeight,
-            offsetX: (Math.random() - 0.5) * playerWidth * 2,
-            offsetY: (Math.random() - 0.5) * playerHeight,
-            startHeight: Math.random() * (gameCanvas.height / 2 - 1000), // Random starting height
-            progress: 0,
-            opacity: 1
-        });
+    // VFX for when a player gets hit
+    function showHitVFX(player) {
+        const playerColor = player.color
+        player.color = 'white';
+        // context.fillRect(player.x, player.y, player.width, player.height);
+        setTimeout(() => {
+            // context.clearRect(player.x, player.y, player.width, player.height);
+            player.color = playerColor;
+            drawPlayer(context, player); // Redraw the player to fix the clearing issue
+        }, 100);
     }
-
-    function animateBeams(timestamp) {
-        vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-
-        beamsData.forEach(beam => {
-            beam.progress += 0.03; // Adjust the speed of the rise
-            beam.opacity = 1.1 - beam.progress;
-
-            const x = Math.max(0, Math.min(vfxCanvas.width, startX + beam.offsetX));
-            const y = Math.max(0, Math.min(vfxCanvas.height, startY - beam.startHeight - beam.progress * (gameCanvas.height / 2) + beam.offsetY));
-
-            vfxContext.fillStyle = beam.color;
-            vfxContext.globalAlpha = beam.opacity;
-            vfxContext.fillRect(x, y, beamWidth, beam.height);
-        });
-
-        if (beamsData.some(beam => beam.progress < 1)) {
-            requestAnimationFrame(animateBeams);
-        } else {
-            vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-            console.log("Clearing fall VFX for player:", player);
-        }
-    }
-
-    requestAnimationFrame(animateBeams);
-}
-
 
     if (!gameLoopRunning) {
         gameLoopRunning = true;
