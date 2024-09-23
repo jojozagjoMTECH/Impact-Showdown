@@ -360,13 +360,15 @@ function startGame(selectedMap) {
             if (player.x < platform.x + platform.width &&
                 player.x + player.width > platform.x &&
                 player.y + player.height >= platform.y &&
-                player.y + player.height <= platform.y + platform.height) { // Adjusted margin for error
+                player.y + player.height <= platform.y + platform.height &&
+                player.velocityY >= 0) { // Ensure the player is falling down onto the platform
                 player.y = platform.y - player.height;
                 player.velocityY = 0;
                 player.onGround = true;
             }
         });
     }
+    
 
     function drawUI() {
         context.fillStyle = 'white';
@@ -427,6 +429,7 @@ function startGame(selectedMap) {
                 case 1: // Red Fury's Ultimate
                     context.fillStyle = 'maroon';
                     context.fillRect(player.x + 50, player.y, 100, 100); // Larger hitbox for ultimate
+                    playCutscene(player, opponent);
                     if (checkHit(player, opponent) && !opponent.iFrames) {
                         playCutscene(player, opponent);
                     }
