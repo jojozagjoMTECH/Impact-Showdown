@@ -300,7 +300,7 @@ function startGame(selectedMap) {
                 let otherPlayer = player === player2 ? player1 : player2;;
                 showFallVFX(player, 3000); // Show VFX for 1 second
                 applyImpactFrames(player, otherPlayer, platforms, 100) 
-                screenShake(20, 1000);
+                screenShake(20, 200);
                 // player.lives -= 1;
     
                 // Delay the resetPlayer call to allow the effect to show
