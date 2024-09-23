@@ -76,7 +76,7 @@ const maps = {
         { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
         { x: 0.2, y: 0.65, width: 0.6, height: 0.02, allowDropThrough: true },
         { x: 0.3, y: 0.55, width: 0.4, height: 0.02, allowDropThrough: true }
-    ]
+    ], 
 };
 
 
@@ -98,7 +98,7 @@ const characters = [
         ultimateDescription: 'A powerful blast of blue energy.',
         abilityName: 'Downslam',
         abilityDescription: 'A powerful downward slam.'
-    }
+    },
     // Add more characters here
 ];
 
@@ -294,6 +294,7 @@ function startGame(selectedMap) {
                 player.visible = false; // Hide the player
                 let otherPlayer = player === player2 ? player1 : player2;;
                 showFallVFX(player, 3000); // Show VFX for 1 second
+                applyImpactFrames(player, otherPlayer, platforms, 100) 
                 screenShake(20, 1000);
                 // player.lives -= 1;
     
@@ -348,8 +349,8 @@ function startGame(selectedMap) {
     }
 
     function drawPlatforms() {
-        context.fillStyle = 'green';
         platforms.forEach(platform => {
+            context.fillStyle = platform.color || 'green';
             context.fillRect(platform.x, platform.y, platform.width, platform.height);
         });
     }
@@ -435,32 +436,15 @@ function startGame(selectedMap) {
                     }
                     break;
                 case 2: // Blue Blast's Ultimate
-                    // Make the player jump up in the air
-                    player.velocityY = -20;
-                    player.ignoreCollisions = true
-                    setTimeout(() => {
-                        player.ignoreCollisions = false
-                        // Shoot a blue laser beam at the opponent
-
-                        if (checkHit(player, opponent) && !opponent.iFrames) {
-                            opponent.percentage += 30; // Higher damage for ultimate
-                            showHitVFX(opponent);
-                            screenShake(5, 500);
-                            // Scale knockback based on percentage
-                            const knockback = opponent.percentage * 0.05;
-                            opponent.velocityX = (opponent.x - player.x) * knockback;
-                            opponent.velocityY = -10 * knockback;
-                            opponent.knockbackActive = true;
-                        }
-                    }, 500); // Delay to simulate the jump
+                    shootLaserBeam(player, opponent);
                     break;
                 // Add more cases for additional characters
                 default:
                     console.log('Unknown character ultimate');
             }
     
-            player.ultimateCharge = 0;
-            player.ultimateReady = false;
+            // player.ultimateCharge = 0;
+            // player.ultimateReady = false;
         }
     }
     
@@ -566,24 +550,6 @@ function startGame(selectedMap) {
         }
     }
 
-    function showUltimateEffect(player) {
-    if (player.character === 1) {
-        // Character 1 ultimate effect (cutscene)
-        context.fillStyle = 'blue';
-        context.fillRect(player.x - 50, player.y - 50, 150, 150);
-        // Add cutscene logic here
-    } else if (player.character === 2) {
-        // Character 2 ultimate effect (long-range attack)
-        context.fillStyle = 'red';
-        context.fillRect(player.x - 50, player.y - 50, 150, 150);
-        // Add long-range attack logic here
-    }
-    setTimeout(() => {
-        context.clearRect(player.x - 50, player.y - 50, 150, 150);
-        drawPlayer(context, player); // Redraw the player to fix the clearing issue
-    }, 500);
-    }
-
     // VFX for when a player gets hit
     function showHitVFX(player) {
         const playerColor = player.color
@@ -595,6 +561,58 @@ function startGame(selectedMap) {
             drawPlayer(context, player); // Redraw the player to fix the clearing issue
         }, 100);
     }
+
+    function applyImpactFrames(player, opponent, platforms, duration = 100, switchInterval = 50) {
+        console.log("Applying impact frames");
+    
+        // Save original styles
+        const originalPlayerColor = player.color;
+        const originalOpponentColor = opponent.color;
+        const originalPlatformColors = platforms.map(platform => platform.color);
+        const originalGameCanvasStyle = gameCanvas.style.backgroundColor;
+    
+        let startTime = Date.now();
+    
+        function switchColors() {
+            const elapsed = Date.now() - startTime;
+            if (elapsed < duration) {
+                const isBlack = Math.floor(elapsed / switchInterval) % 2 === 0; // Switch colors based on switchInterval
+                const color = isBlack ? 'black' : 'white';
+                const bgColor = isBlack ? 'white' : 'black';
+    
+                player.color = color;
+                opponent.color = color;
+                platforms.forEach(platform => platform.color = color);
+                gameCanvas.style.backgroundColor = bgColor;
+    
+                requestAnimationFrame(switchColors);
+            } else {
+                // Restore original styles after duration
+                player.color = originalPlayerColor;
+                opponent.color = originalOpponentColor;
+                platforms.forEach((platform, index) => platform.color = originalPlatformColors[index]);
+                gameCanvas.style.backgroundColor = originalGameCanvasStyle;
+                console.log("Impact frames ended");
+            }
+        }
+    
+        switchColors();
+    
+        // Apply VFX around players
+        function drawImpactVFX() {
+            vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+            vfxContext.fillStyle = 'rgba(255, 0, 0, 0.5)';
+            vfxContext.beginPath();
+            vfxContext.arc(player.x + player.width / 2, player.y + player.height / 2, 50, 0, 2 * Math.PI);
+            vfxContext.fill();
+            vfxContext.beginPath();
+            vfxContext.arc(opponent.x + opponent.width / 2, opponent.y + opponent.height / 2, 50, 0, 2 * Math.PI);
+            vfxContext.fill();
+        }
+    
+        drawImpactVFX();
+    }
+    
 
     function showFallVFX(player, duration = 1000) {
         console.log("Showing fall VFX for player:", player);
@@ -662,7 +680,134 @@ function startGame(selectedMap) {
         }
     
         requestAnimationFrame(animateBeams);
-    }    
+    }
+
+    function shootLaserBeam(player, opponent) {
+        // Make the player jump up in the air and hover
+        player.velocityY = -20;
+        player.ignoreCollisions = true;
+        setTimeout(() => {
+            player.ignoreCollisions = true;
+    
+            // Visualize the charge-up phase
+            const chargeDuration = 1000; // Duration of the charge-up
+            const chargeColor = 'blue';
+            const chargeRadius = 20;
+            const startX = player.x + player.width / 2;
+            const startY = player.y + player.height / 2;
+    
+            let chargeProgress = 0;
+    
+            function animateCharge(timestamp) {
+                vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+    
+                player.velocityY = -gravity; // Hover in the air
+                player.velocityX = 0;
+
+                chargeProgress += 0.02; // Adjust the speed of the charge-up
+                const currentRadius = chargeRadius + chargeProgress * 50;
+    
+                vfxContext.fillStyle = chargeColor;
+                vfxContext.globalAlpha = 0.5 + 0.5 * Math.sin(chargeProgress * Math.PI); // Pulsating effect
+                vfxContext.beginPath();
+                vfxContext.arc(startX, startY, currentRadius, 0, 2 * Math.PI);
+                vfxContext.fill();
+    
+                if (chargeProgress < 1) {
+                    requestAnimationFrame(animateCharge);
+                } else {
+                    // Clear the charge-up effect
+                    vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+    
+                    // Shoot the laser beam
+                    shootLaser();
+                }
+            }
+    
+            function shootLaser() {
+                // Shoot a blue laser beam directly at the opponent
+                const laserDuration = 1000; // Duration of the laser
+                const laserWidth = 50;
+                const laserColor = 'blue';
+                const endX = opponent.x + opponent.width / 2;
+                const endY = opponent.y + opponent.height / 2;
+    
+                let laserProgress = 0;
+                let laserOpacity = 1;
+
+                screenShake(30, 300)
+                applyImpactFrames(player, opponent, platforms, 200) 
+    
+                function animateLaser(timestamp) {
+                    vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+
+                    player.velocityY = -gravity; // Hover in the air
+                    player.velocityX = 0;
+    
+                    laserProgress += 0.02; // Adjust the speed of the laser
+                    const currentX = startX + (endX - startX) * laserProgress;
+                    const currentY = startY + (endY - startY) * laserProgress;
+    
+                    vfxContext.strokeStyle = laserColor;
+                    vfxContext.lineWidth = laserWidth;
+                    vfxContext.globalAlpha = laserOpacity;
+                    vfxContext.beginPath();
+                    vfxContext.moveTo(startX, startY);
+                    vfxContext.lineTo(currentX, currentY);
+                    vfxContext.stroke();
+    
+                    if (laserProgress < 1) {
+                        requestAnimationFrame(animateLaser);
+                    } else {
+                        // Start fading out the laser
+                        const fadeDuration = 500; // Duration of the fade out
+                        const fadeStep = 0.02; // Step for each frame
+    
+                        function fadeLaser() {
+                            vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                            laserOpacity -= fadeStep;
+                            if (laserOpacity > 0) {
+                                vfxContext.strokeStyle = laserColor;
+                                vfxContext.lineWidth = laserWidth;
+                                vfxContext.globalAlpha = laserOpacity;
+                                vfxContext.beginPath();
+                                vfxContext.moveTo(startX, startY);
+                                vfxContext.lineTo(endX, endY);
+                                vfxContext.stroke();
+                                requestAnimationFrame(fadeLaser);
+                            } else {
+                                vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                                console.log("Clearing laser beam VFX for player:", player);
+                            }
+                        }
+    
+                        fadeLaser();
+                    }
+                }
+    
+                requestAnimationFrame(animateLaser);
+    
+                // Check for hit during the laser
+                setTimeout(() => {
+                    if (checkHit(player, opponent)) {
+                        opponent.percentage += 30; // Higher damage for ultimate
+                        showHitVFX(opponent);
+                        screenShake(5, 500);
+                        // Scale knockback based on percentage
+                        const knockback = opponent.percentage * 0.05;
+                        opponent.velocityX = (opponent.x - player.x) * knockback;
+                        opponent.velocityY = -10 * knockback;
+                        opponent.knockbackActive = true;
+                    }
+                    player.ignoreCollisions = false; // End hover
+                }, laserDuration);
+            }
+    
+            requestAnimationFrame(animateCharge);
+        }, 200); // Delay to simulate the jump
+    }
+
+    
 
     if (!gameLoopRunning) {
         gameLoopRunning = true;
@@ -675,8 +820,10 @@ function playCutscene(player, opponent) {
 
     // Example cutscene logic
     const cutsceneDuration = 3000; // 3 seconds
-    const originalVelocityX = player.velocityX;
-    const originalVelocityY = player.velocityY;
+    const originalPlayerVelocityX = player.velocityX;
+    const originalPlayerVelocityY = player.velocityY;
+    const originalOpponentVelocityX = opponent.velocityX;
+    const originalOpponentVelocityY = opponent.velocityY;
 
     // Freeze players during cutscene
     player.velocityX = 0;
@@ -692,18 +839,41 @@ function playCutscene(player, opponent) {
     context.fillText('Red Fury Ultimate!', vfxCanvas.width / 2 - 100, vfxCanvas.height / 2);
 
     setTimeout(() => {
-        // End cutscene and restore player velocities
-        player.velocityX = originalVelocityX;
-        player.velocityY = originalVelocityY;
-        opponent.velocityX = originalVelocityX;
-        opponent.velocityY = originalVelocityY;
-        console.log("Cutscene ended for player:", player);
-    }, cutsceneDuration);
+        // Throw opponent up
+        opponent.velocityY = -15;
+        setTimeout(() => {
+            // Kick opponent
+            opponent.velocityY = -20;
+            opponent.velocityX = 10;
+
+            // Switch to black and white with "Red Fury" text
+            context.fillStyle = 'black';
+            context.fillRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+            context.fillStyle = 'white';
+            context.globalCompositeOperation = 'difference';
+            context.fillRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+            context.globalCompositeOperation = 'source-over';
+            context.fillStyle = 'red';
+            context.font = '50px Arial';
+            context.fillText('Red Fury', vfxCanvas.width / 2 - 100, vfxCanvas.height / 2);
+
+            setTimeout(() => {
+                // End cutscene and restore player velocities
+                player.velocityX = originalPlayerVelocityX;
+                player.velocityY = originalPlayerVelocityY;
+                opponent.velocityX = originalOpponentVelocityX;
+                opponent.velocityY = originalOpponentVelocityY;
+                console.log("Cutscene ended for player:", player);
+            }, 1000); // Duration of the black and white screen
+        }, 1000); // Duration of the throw
+    }, 1000); // Duration of the initial cutscene visuals
 }
+
 
 // Screen shake function
 function screenShake(intensity, duration) {
-    const originalStyle = gameCanvas.style.transform;
+    const originalGameCanvasStyle = gameCanvas.style.transform;
+    const originalVfxCanvasStyle = vfxCanvas.style.transform;
     let startTime = Date.now();
 
     function shake() {
@@ -712,9 +882,11 @@ function screenShake(intensity, duration) {
             const x = (Math.random() - 0.5) * intensity;
             const y = (Math.random() - 0.5) * intensity;
             gameCanvas.style.transform = `translate(${x}px, ${y}px)`;
+            vfxCanvas.style.transform = `translate(${x}px, ${y}px)`;
             requestAnimationFrame(shake);
         } else {
-            gameCanvas.style.transform = originalStyle;
+            gameCanvas.style.transform = originalGameCanvasStyle;
+            vfxCanvas.style.transform = originalVfxCanvasStyle;
         }
     }
 
