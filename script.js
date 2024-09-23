@@ -286,8 +286,6 @@ function startGame(selectedMap) {
         } else if (!player.onGround) {
             player.onGround = false;
         }
-        
-        // showFallVFX(player, 1000);
 
         // Check for falling off the plaawtform
         if (player.y > gameCanvas.height - 80 || player.x < -player.width || player.x > gameCanvas.width) {
@@ -488,14 +486,14 @@ function startGame(selectedMap) {
         }
 
         player.comboHits += 1;
-    if (player.comboHits >= 4) {
-        player.comboCooldown = true;
-        setTimeout(() => {
-            player.comboHits = 0;
-            player.comboCooldown = false;
-        }, 1000);
+        if (player.comboHits >= 4) {
+            player.comboCooldown = true;
+            setTimeout(() => {
+                player.comboHits = 0;
+                player.comboCooldown = false;
+            }, 1000);
+        }
     }
-}
 
 
     function checkHit(attacker, defender) {
@@ -594,6 +592,74 @@ function startGame(selectedMap) {
             drawPlayer(context, player); // Redraw the player to fix the clearing issue
         }, 100);
     }
+
+    function showFallVFX(player, duration = 1000) {
+        console.log("Showing fall VFX for player:", player);
+    
+        const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
+        const beams = 20;
+        const maxBeamHeight = 3000;
+        const minBeamHeight = 500;
+        const beamWidth = 10;
+    
+        const playerX = player.x;
+        const playerY = player.y;
+        const playerWidth = player.width;
+        const playerHeight = player.height;
+    
+        let startX, startY;
+        if (playerX < 0) {
+            startX = 0;
+            startY = playerY + playerHeight / 2;
+        } else if (playerX + playerWidth > gameCanvas.width) {
+            startX = gameCanvas.width;
+            startY = playerY + playerHeight / 2;
+        } else if (playerY > gameCanvas.height) {
+            startX = playerX + playerWidth / 2;
+            startY = gameCanvas.height;
+        } else {
+            startX = playerX + playerWidth / 2;
+            startY = playerY + playerHeight / 2;
+        }
+    
+        const beamsData = [];
+        for (let i = 0; i < beams; i++) {
+            beamsData.push({
+                color: colors[i % colors.length],
+                height: Math.random() * (maxBeamHeight - minBeamHeight) + minBeamHeight,
+                offsetX: (Math.random() - 0.5) * playerWidth * 2,
+                offsetY: (Math.random() - 0.5) * playerHeight,
+                startHeight: Math.random() * (gameCanvas.height / 2 - 1000), // Random starting height
+                progress: 0,
+                opacity: 1
+            });
+        }
+    
+        function animateBeams(timestamp) {
+            vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+    
+            beamsData.forEach(beam => {
+                beam.progress += 0.03; // Adjust the speed of the rise
+                beam.opacity = 1.1 - beam.progress;
+    
+                const x = Math.max(0, Math.min(vfxCanvas.width, startX + beam.offsetX));
+                const y = Math.max(0, Math.min(vfxCanvas.height, startY - beam.startHeight - beam.progress * (gameCanvas.height / 2) + beam.offsetY));
+    
+                vfxContext.fillStyle = beam.color;
+                vfxContext.globalAlpha = beam.opacity;
+                vfxContext.fillRect(x, y, beamWidth, beam.height);
+            });
+    
+            if (beamsData.some(beam => beam.progress < 1)) {
+                requestAnimationFrame(animateBeams);
+            } else {
+                vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                console.log("Clearing fall VFX for player:", player);
+            }
+        }
+    
+        requestAnimationFrame(animateBeams);
+    }    
 
     if (!gameLoopRunning) {
         gameLoopRunning = true;
