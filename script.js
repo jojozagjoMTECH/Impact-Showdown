@@ -20,7 +20,9 @@ let player1 = {
     isFalling: false,
     iFrames: false,
     visible: true,
-    ignoreCollisions: false
+    ignoreCollisions: false,
+    disableControls: false,
+    ignoreGravity: false
 };
 
 let player2 = {
@@ -45,7 +47,9 @@ let player2 = {
     isFalling: false,
     iFrames: false,
     visible: true,
-    ignoreCollisions: false
+    ignoreCollisions: false,
+    disableControls: false,
+    ignoreGravity: false
 };
 
 
@@ -271,9 +275,11 @@ function startGame(selectedMap) {
     }
 
     function updatePlayer(player) {
-
+        
         // Apply gravity
-        player.velocityY += gravity;
+        if (!player.ignoreGravity) {
+            player.velocityY += gravity;
+        }
         player.y += player.velocityY;
         player.x += player.velocityX;
     
@@ -437,7 +443,7 @@ function startGame(selectedMap) {
                     context.fillRect(player.x + 50, player.y, 100, 100); // Larger hitbox for ultimate
                     playCutscene(player, opponent);
                     if (checkHit(player, opponent) && !opponent.iFrames) {
-                        playCutscene(player, opponent);
+                        // playCutscene(player, opponent);
                     }
                     break;
                 case 2: // Blue Blast's Ultimate
@@ -525,33 +531,35 @@ function startGame(selectedMap) {
     });
 
     function handleMovement(key, player) {
-        switch (key) {
-            case player.controls.up:
-                if (player.onGround) {
-                    player.velocityY = -15;
-                    player.onGround = false;
-                }
-                break;
-            case player.controls.left:
-                player.velocityX = -5;
-                break;
-            case player.controls.down:
-                // Check if the player is on a platform that allows drop through
-                const currentPlatform = platforms.find(platform => 
-                    player.x < platform.x + platform.width &&
-                    player.x + player.width > platform.x &&
-                    player.y + player.height >= platform.y &&
-                    player.y + player.height <= platform.y + platform.height
-                );
-    
-                if (currentPlatform && currentPlatform.allowDropThrough) {
-                    player.y += 35;
-                    // player.onGround = false
-                }
-                break;
-            case player.controls.right:
-                player.velocityX = 5;
-                break;
+        if (!player.disableControls) {
+            switch (key) {
+                case player.controls.up:
+                    if (player.onGround) {
+                        player.velocityY = -15;
+                        player.onGround = false;
+                    }
+                    break;
+                case player.controls.left:
+                    player.velocityX = -5;
+                    break;
+                case player.controls.down:
+                    // Check if the player is on a platform that allows drop through
+                    const currentPlatform = platforms.find(platform => 
+                        player.x < platform.x + platform.width &&
+                        player.x + player.width > platform.x &&
+                        player.y + player.height >= platform.y &&
+                        player.y + player.height <= platform.y + platform.height
+                    );
+        
+                    if (currentPlatform && currentPlatform.allowDropThrough) {
+                        player.y += 35;
+                        // player.onGround = false
+                    }
+                    break;
+                case player.controls.right:
+                    player.velocityX = 5;
+                    break;
+            }
         }
     }
 
@@ -605,17 +613,17 @@ function startGame(selectedMap) {
             switchColors();
         
             // Apply VFX around players
-            function drawImpactVFX() {
-                vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-                vfxContext.fillStyle = 'rgba(255, 0, 0, 0.5)';
-                vfxContext.beginPath();
-                vfxContext.arc(player.x + player.width / 2, player.y + player.height / 2, 50, 0, 2 * Math.PI);
-                vfxContext.fill();
-                vfxContext.beginPath();
-                vfxContext.arc(opponent.x + opponent.width / 2, opponent.y + opponent.height / 2, 50, 0, 2 * Math.PI);
-                vfxContext.fill();
-            }
-            drawImpactVFX();
+            // function drawImpactVFX() {
+            //     vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+            //     vfxContext.fillStyle = 'rgba(255, 0, 0, 0.5)';
+            //     vfxContext.beginPath();
+            //     vfxContext.arc(player.x + player.width / 2, player.y + player.height / 2, 50, 0, 2 * Math.PI);
+            //     vfxContext.fill();
+            //     vfxContext.beginPath();
+            //     vfxContext.arc(opponent.x + opponent.width / 2, opponent.y + opponent.height / 2, 50, 0, 2 * Math.PI);
+            //     vfxContext.fill();
+            // }
+            // drawImpactVFX();
         }
     }
 
@@ -814,68 +822,144 @@ function startGame(selectedMap) {
         }, 200); // Delay to simulate the jump
     }
 
+    function playCutscene(player, opponent) {
+        console.log("Playing cutscene for player:", player);
     
+        // Example cutscene logic
+        let cutsceneDuration = 3000; // 3 seconds
+    
+        // Freeze players during cutscene
+        player.disableControls = true;
+        opponent.disableControls = true;
+        console.log(player.character);
+        
+        if (player.character === 1) {
+            cutsceneDuration = 3500;
+            opponent.velocityY = -25;
+            setTimeout(() => {              
+                opponent.velocityY = 0;
+                opponent.ignoreGravity = true;
+                setTimeout(() => {              
+                    vfxContext.fillStyle = 'black';
+                    vfxContext.fillRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                    vfxContext.fillStyle = 'white';
+                    vfxContext.font = '30px Arial';
+                    vfxContext.fillText('Red Fury Ultimate.', vfxCanvas.width / 2 - 100, vfxCanvas.height / 2);
+                    setTimeout(() => {              
+                        vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                        player.velocityY = -24;
+                        setTimeout(() => {      
+                            player.velocityY = 0;
+                            player.ignoreGravity = true;
+                            setTimeout(() => {      
+                                vfxContext.fillStyle = 'black';
+                                vfxContext.fillRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                                vfxContext.fillStyle = 'white';
+                                // vfxContext.globalCompositeOperation = 'difference';
+                                vfxContext.fillRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                                // vfxContext.globalCompositeOperation = 'source-over';
+                                vfxContext.fillStyle = 'red';
+                                vfxContext.font = '50px Arial';
+                                vfxContext.fillText('Red Fury', vfxCanvas.width / 2 - 100, vfxCanvas.height / 2);
+                                setTimeout(() => {
+                                    applyImpactFrames(player, opponent, platforms, 100, 50);
+                                    screenShake(30, 200);
+                                    fireworkHitVfx(opponent, 50, 500);
+                                    opponent.ignoreGravity = false;
+                                    opponent.velocityY = -5;
+                                    opponent.velocityX = 1;
+                                    setTimeout(() => {
+                                        vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                                        player.disableControls = false;
+                                        opponent.disableControls = false;
+                                        player.ignoreGravity = false;    
+                                        opponent.ignoreGravity = false;
+                                        opponent.velocityX = 0;
+                                        // Reset globalCompositeOperation to default
+                                        // vfxContext.globalCompositeOperation = 'source-over';
+                                        console.log("Cutscene ended for player:", player);
+                                    }, 200);
+                                }, 1000);
+                            }, 200);
+                        }, 300);
+                    }, 1000);
+                }, 300);
+            }, 300);
+        }
+    
+        // Ensure the canvas is cleared and globalCompositeOperation is reset before starting the cutscene
+        vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+        vfxContext.globalCompositeOperation = 'source-over';
+    
+        setTimeout(() => {
+            vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+            player.disableControls = false;
+            opponent.disableControls = false;
+            player.ignoreGravity = false;    
+            opponent.ignoreGravity = false;
+            opponent.velocityX = 0;
+            // Reset globalCompositeOperation to default
+            vfxContext.globalCompositeOperation = 'source-over';
+            console.log("Cutscene ended for player:", player);
+        }, cutsceneDuration);
+    }
+    
+    
+    
+    function fireworkHitVfx(player, effectBeams = 10, effectBeamLength = 50) {
+        const effectDuration = 1000; // 1 second
+        const effectColors = ['red', 'orange', 'yellow'];
+    
+        const playerX = player.x;
+        const playerY = player.y;
+        const playerWidth = player.width;
+        const playerHeight = player.height;
+    
+        const beamsData = [];
+        for (let i = 0; i < effectBeams; i++) {
+            beamsData.push({
+                color: effectColors[i % effectColors.length],
+                length: effectBeamLength,
+                angle: (Math.PI * 2 / effectBeams) * i,
+                progress: 0,
+                opacity: 1
+            });
+        }
+    
+        function animateEffects(timestamp) {
+            vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+    
+            beamsData.forEach(beam => {
+                beam.progress += 0.05; // Adjust the speed of the effect
+                beam.opacity = 1.1 - beam.progress;
+    
+                const x = playerX + playerWidth / 2 + Math.cos(beam.angle) * beam.progress * effectBeamLength;
+                const y = playerY + playerHeight / 2 + Math.sin(beam.angle) * beam.progress * effectBeamLength;
+    
+                vfxContext.strokeStyle = beam.color;
+                vfxContext.globalAlpha = beam.opacity;
+                vfxContext.beginPath();
+                vfxContext.moveTo(playerX + playerWidth / 2, playerY + playerHeight / 2);
+                vfxContext.lineTo(x, y);
+                vfxContext.stroke();
+            });
+    
+            if (beamsData.some(beam => beam.progress < 1)) {
+                requestAnimationFrame(animateEffects);
+            } else {
+                vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                console.log("Clearing player effects for player:", player);
+            }
+        }
+    
+        requestAnimationFrame(animateEffects);
+    }
 
     if (!gameLoopRunning) {
         gameLoopRunning = true;
         gameLoop();
     }
 }
-
-function playCutscene(player, opponent) {
-    console.log("Playing cutscene for player:", player);
-
-    // Example cutscene logic
-    const cutsceneDuration = 3000; // 3 seconds
-    const originalPlayerVelocityX = player.velocityX;
-    const originalPlayerVelocityY = player.velocityY;
-    const originalOpponentVelocityX = opponent.velocityX;
-    const originalOpponentVelocityY = opponent.velocityY;
-
-    // Freeze players during cutscene
-    player.velocityX = 0;
-    player.velocityY = 0;
-    opponent.velocityX = 0;
-    opponent.velocityY = 0;
-
-    // Display cutscene visuals
-    context.fillStyle = 'black';
-    context.fillRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-    context.fillStyle = 'white';
-    context.font = '30px Arial';
-    context.fillText('Red Fury Ultimate!', vfxCanvas.width / 2 - 100, vfxCanvas.height / 2);
-
-    setTimeout(() => {
-        // Throw opponent up
-        opponent.velocityY = -15;
-        setTimeout(() => {
-            // Kick opponent
-            opponent.velocityY = -20;
-            opponent.velocityX = 10;
-
-            // Switch to black and white with "Red Fury" text
-            context.fillStyle = 'black';
-            context.fillRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-            context.fillStyle = 'white';
-            context.globalCompositeOperation = 'difference';
-            context.fillRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-            context.globalCompositeOperation = 'source-over';
-            context.fillStyle = 'red';
-            context.font = '50px Arial';
-            context.fillText('Red Fury', vfxCanvas.width / 2 - 100, vfxCanvas.height / 2);
-
-            setTimeout(() => {
-                // End cutscene and restore player velocities
-                player.velocityX = originalPlayerVelocityX;
-                player.velocityY = originalPlayerVelocityY;
-                opponent.velocityX = originalOpponentVelocityX;
-                opponent.velocityY = originalOpponentVelocityY;
-                console.log("Cutscene ended for player:", player);
-            }, 1000); // Duration of the black and white screen
-        }, 1000); // Duration of the throw
-    }, 1000); // Duration of the initial cutscene visuals
-}
-
 
 // Screen shake function
 function screenShake(intensity, duration) {
