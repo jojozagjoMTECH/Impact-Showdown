@@ -103,6 +103,7 @@ const characters = [
 ];
 
 let showHitboxes = false;
+let showImpactFrames = true;
 
 document.getElementById('play-button').addEventListener('click', () => {
     document.getElementById('main-menu').classList.add('hidden');
@@ -121,6 +122,10 @@ document.getElementById('back-button').addEventListener('click', () => {
 
 document.getElementById('toggle-hitboxes').addEventListener('change', (event) => {
     showHitboxes = event.target.checked;
+});
+
+document.getElementById('toggle-impactframes').addEventListener('change', (event) => {
+    showImpactFrames = event.target.checked;
 });
 
 function updatePlayerPreview(player, characterId) {
@@ -254,6 +259,7 @@ function startGame(selectedMap) {
     resetPlayer(player2);
     vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
     function gameLoop() {
+        console.log(showImpactFrames)
         context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
         drawPlatforms();
         updatePlayer(player1);
@@ -563,55 +569,58 @@ function startGame(selectedMap) {
     }
 
     function applyImpactFrames(player, opponent, platforms, duration = 100, switchInterval = 50) {
-        console.log("Applying impact frames");
-    
-        // Save original styles
-        const originalPlayerColor = player.color;
-        const originalOpponentColor = opponent.color;
-        const originalPlatformColors = platforms.map(platform => platform.color);
-        const originalGameCanvasStyle = gameCanvas.style.backgroundColor;
-    
-        let startTime = Date.now();
-    
-        function switchColors() {
-            const elapsed = Date.now() - startTime;
-            if (elapsed < duration) {
-                const isBlack = Math.floor(elapsed / switchInterval) % 2 === 0; // Switch colors based on switchInterval
-                const color = isBlack ? 'black' : 'white';
-                const bgColor = isBlack ? 'white' : 'black';
-    
-                player.color = color;
-                opponent.color = color;
-                platforms.forEach(platform => platform.color = color);
-                gameCanvas.style.backgroundColor = bgColor;
-    
-                requestAnimationFrame(switchColors);
-            } else {
-                // Restore original styles after duration
-                player.color = originalPlayerColor;
-                opponent.color = originalOpponentColor;
-                platforms.forEach((platform, index) => platform.color = originalPlatformColors[index]);
-                gameCanvas.style.backgroundColor = originalGameCanvasStyle;
-                console.log("Impact frames ended");
+        if (showImpactFrames) {
+            console.log(showImpactFrames)
+            console.log("Applying impact frames");
+        
+            // Save original styles
+            const originalPlayerColor = player.color;
+            const originalOpponentColor = opponent.color;
+            const originalPlatformColors = platforms.map(platform => platform.color);
+            const originalGameCanvasStyle = gameCanvas.style.backgroundColor;
+        
+            let startTime = Date.now();
+        
+            function switchColors() {
+                const elapsed = Date.now() - startTime;
+                if (elapsed < duration) {
+                    const isBlack = Math.floor(elapsed / switchInterval) % 2 === 0; // Switch colors based on switchInterval
+                    const color = isBlack ? 'black' : 'white';
+                    const bgColor = isBlack ? 'white' : 'black';
+        
+                    player.color = color;
+                    opponent.color = color;
+                    platforms.forEach(platform => platform.color = color);
+                    gameCanvas.style.backgroundColor = bgColor;
+        
+                    requestAnimationFrame(switchColors);
+                } else {
+                    // Restore original styles after duration
+                    player.color = originalPlayerColor;
+                    opponent.color = originalOpponentColor;
+                    platforms.forEach((platform, index) => platform.color = originalPlatformColors[index]);
+                    gameCanvas.style.backgroundColor = originalGameCanvasStyle;
+                    console.log("Impact frames ended");
+                }
             }
+        
+            switchColors();
+        
+            // Apply VFX around players
+            function drawImpactVFX() {
+                vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                vfxContext.fillStyle = 'rgba(255, 0, 0, 0.5)';
+                vfxContext.beginPath();
+                vfxContext.arc(player.x + player.width / 2, player.y + player.height / 2, 50, 0, 2 * Math.PI);
+                vfxContext.fill();
+                vfxContext.beginPath();
+                vfxContext.arc(opponent.x + opponent.width / 2, opponent.y + opponent.height / 2, 50, 0, 2 * Math.PI);
+                vfxContext.fill();
+            }
+            drawImpactVFX();
         }
-    
-        switchColors();
-    
-        // Apply VFX around players
-        function drawImpactVFX() {
-            vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-            vfxContext.fillStyle = 'rgba(255, 0, 0, 0.5)';
-            vfxContext.beginPath();
-            vfxContext.arc(player.x + player.width / 2, player.y + player.height / 2, 50, 0, 2 * Math.PI);
-            vfxContext.fill();
-            vfxContext.beginPath();
-            vfxContext.arc(opponent.x + opponent.width / 2, opponent.y + opponent.height / 2, 50, 0, 2 * Math.PI);
-            vfxContext.fill();
-        }
-    
-        drawImpactVFX();
     }
+
     
 
     function showFallVFX(player, duration = 1000) {
