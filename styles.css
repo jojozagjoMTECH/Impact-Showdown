@@ -169,3 +169,24 @@ button:active {
     background-color: #3e8e41;
     transform: scale(0.95);
 }
+
+#winner-screen {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background-color: rgba(0, 0, 0, 0.8);
+    color: white;
+    padding: 20px;
+    text-align: center;
+    border-radius: 10px;
+}
+
+#winner-screen h1 {
+    margin-bottom: 20px;
+}
+
+#winner-screen button {
+    padding: 10px 20px;
+    font-size: 16px;
+}
