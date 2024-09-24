@@ -862,12 +862,12 @@ function startGame(selectedMap) {
                                 vfxContext.font = '50px Arial';
                                 vfxContext.fillText('Red Fury', vfxCanvas.width / 2 - 100, vfxCanvas.height / 2);
                                 setTimeout(() => {
-                                    applyImpactFrames(player, opponent, platforms, 100, 50);
+                                    // applyImpactFrames(player, opponent, platforms, 100, 50);
                                     screenShake(30, 200);
-                                    fireworkHitVfx(opponent, 50, 500);
+                                    fireworkHitVfx(opponent, 100, 500);
                                     opponent.ignoreGravity = false;
                                     opponent.velocityY = -5;
-                                    opponent.velocityX = 1;
+                                    opponent.velocityX = (opponent.x - player.x) / 3
                                     setTimeout(() => {
                                         vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
                                         player.disableControls = false;
@@ -928,6 +928,7 @@ function startGame(selectedMap) {
     
         function animateEffects(timestamp) {
             vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+            vfxContext.globalAlpha = 1; // Reset globalAlpha before drawing
     
             beamsData.forEach(beam => {
                 beam.progress += 0.05; // Adjust the speed of the effect
@@ -948,12 +949,14 @@ function startGame(selectedMap) {
                 requestAnimationFrame(animateEffects);
             } else {
                 vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                vfxContext.globalAlpha = 1; // Reset globalAlpha after clearing
                 console.log("Clearing player effects for player:", player);
             }
         }
     
         requestAnimationFrame(animateEffects);
     }
+    
 
     if (!gameLoopRunning) {
         gameLoopRunning = true;
