@@ -15,6 +15,7 @@ let player1 = {
     onGround: false,
     velocityX: 0,
     velocityY: 0,
+    weight: 10,
     comboHits: 0,
     comboCooldown: false,
     isFalling: false,
@@ -22,7 +23,7 @@ let player1 = {
     visible: true,
     ignoreCollisions: false,
     disableControls: false,
-    ignoreGravity: false
+    ignoreGravity: false,
 };
 
 let player2 = {
@@ -42,6 +43,7 @@ let player2 = {
     onGround: false,
     velocityX: 0,
     velocityY: 0,
+    weight: 10,
     comboHits: 0,
     comboCooldown: false,
     isFalling: false,
@@ -282,6 +284,9 @@ function startGame(selectedMap) {
         }
         player.y += player.velocityY;
         player.x += player.velocityX;
+        // Apply friction
+        this.velocityX *= 0.95;
+        this.velocityY *= 0.95;
     
         // Check for platform collision
         if (player.ignoreCollisions = true) {
@@ -318,15 +323,15 @@ function startGame(selectedMap) {
             }
         }
 
-        if (player.knockbackActive) {
-            // smokeTrailVFX(player, 300, 100, 6);
-        }
+        // if (player.knockbackActive) {
+        //     // smokeTrailVFX(player, 300, 100, 6);
+        // }
     
         // Update player position and ultimate charge
         if (player.ultimateCharge >= 100) {
             player.ultimateReady = true;
         }
-    
+        
         // Deactivate knockback when player hits the ground
         if (player.knockbackActive && player.onGround) {
             player.velocityX = 0;
@@ -475,15 +480,12 @@ function startGame(selectedMap) {
         context.fillRect(player.x + hitboxOffset, player.y, 50, 50);
 
         if (checkHit(player, opponent) && !opponent.iFrames) {
-            opponent.percentage += 10;
+            applyDamage(opponent, 10);
             showHitVFX(opponent);
             screenShake(3, 500);
             player.ultimateCharge += 10;
             // Scale knockback based on percentage
-            const knockback = opponent.percentage * 0.01;
-            opponent.velocityX = (opponent.x - player.x) * knockback;
-            opponent.velocityY = -5 * knockback;
-            opponent.knockbackActive = true;
+            applyKnockback(player, opponent);
         }
 
         player.comboHits += 1;
@@ -495,6 +497,23 @@ function startGame(selectedMap) {
             }, 1000);
         }
     }
+
+    function applyDamage(player, amount) {
+        player.percentage += amount;
+    }
+
+    function applyKnockback(player, opponent) {
+        const hitPointX = player.x
+        const hitPointY = player.y
+        const knockback = opponent.percentage * 0.01;
+        const angle = Math.atan2(opponent.y + opponent.height / 2 - hitPointY, opponent.x + opponent.width / 2 - hitPointX);
+    
+        opponent.velocityX = (opponent.x - player.x) * knockback; // Adjust multiplier for desired knockback strength
+        opponent.velocityY = Math.sin(angle) * knockback * 10; // Adjust multiplier for desired knockback strength
+    
+        opponent.knockbackActive = true;
+    }
+    
 
 
     function checkHit(attacker, defender) {
@@ -808,7 +827,7 @@ function startGame(selectedMap) {
                 // Check for hit during the laser
                 setTimeout(() => {
                     if (checkHit(player, opponent)) {
-                        opponent.percentage += 30; // Higher damage for ultimate
+                        applyDamage(opponent, 30); // Higher damage for ultimate
                         showHitVFX(opponent);
                         screenShake(5, 500);
                         // Scale knockback based on percentage
