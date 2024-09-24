@@ -84,6 +84,16 @@ gameCanvas.height = window.innerHeight;
 vfxCanvas.width = window.innerWidth;
 vfxCanvas.height = window.innerHeight;
 
+const backgroundLayers = [
+    { image: new Image(), speed: 0.2, x: 0 },
+    { image: new Image(), speed: 0.5, x: 0 },
+    { image: new Image(), speed: 1.0, x: 0 }
+];
+
+// backgroundLayers[0].image.src = 'path/to/background1.png';
+// backgroundLayers[1].image.src = 'path/to/background2.png';
+// backgroundLayers[2].image.src = 'path/to/background3.png';
+
 const maps = {
     map1: [
         { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
@@ -101,6 +111,15 @@ const maps = {
     ], 
 };
 
+const mapBackgrounds = {
+    map1: { image: new Image(), speed: 0.5, x: 0 },
+    map2: { image: new Image(), speed: 0.5, x: 0 },
+    map3: { image: new Image(), speed: 0.5, x: 0 }
+};
+
+// mapBackgrounds.map1.image.src = 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg';
+// mapBackgrounds.map2.image.src = 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg';
+// mapBackgrounds.map3.image.src = 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg';
 
 const characters = [
     {
@@ -282,6 +301,10 @@ function startGame(selectedMap) {
     vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
     function gameLoop() {
         context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
+        
+        updateBackground(selectedMap);
+        drawBackground(context, selectedMap);
+        
         drawPlatforms();
         updatePlayer(player1);
         updatePlayer(player2);
@@ -289,7 +312,30 @@ function startGame(selectedMap) {
         drawPlayer(context, player2);
         drawUI();
         checkGameOver();
+        
         requestAnimationFrame(gameLoop);
+    }
+
+    function updateBackground(currentMap) {
+        if (!mapBackgrounds[currentMap]) {
+            console.error(`Invalid map: ${currentMap}`);
+            return;
+        }
+        const background = mapBackgrounds[currentMap];
+        background.x -= (player1.velocityX + player2.velocityX) / 2 * background.speed;
+        if (background.x <= -gameCanvas.width) {
+            background.x = 0;
+        }
+    }
+    
+    function drawBackground(context, currentMap) {
+        if (!mapBackgrounds[currentMap]) {
+            console.error(`Invalid map: ${currentMap}`);
+            return;
+        }
+        const background = mapBackgrounds[currentMap];
+        context.drawImage(background.image, background.x, 0, gameCanvas.width, gameCanvas.height);
+        context.drawImage(background.image, background.x + gameCanvas.width, 0, gameCanvas.width, gameCanvas.height);
     }
 
     function updatePlayer(player) {
@@ -300,9 +346,10 @@ function startGame(selectedMap) {
         }
         player.y += player.velocityY;
         player.x += player.velocityX;
-        // Apply friction
-        this.velocityX *= 0.95;
-        this.velocityY *= 0.95;
+
+        // // Apply friction
+        // player.velocityX *= 0.95;
+        // player.velocityY *= 0.95;
     
         // Check for platform collision
         if (player.ignoreCollisions = true) {
@@ -389,6 +436,8 @@ function startGame(selectedMap) {
 
     function drawPlatforms() {
         platforms.forEach(platform => {
+            // Adjust platform position based on the average player position
+            // platform.x -= (player1.velocityX + player2.velocityX) / 2 * 0.5;
             context.fillStyle = platform.color || 'green';
             context.fillRect(platform.x, platform.y, platform.width, platform.height);
         });
