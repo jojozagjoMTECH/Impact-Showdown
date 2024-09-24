@@ -317,7 +317,10 @@ function startGame(selectedMap) {
                 }, 2000); // Delay for 2 seconds (2000 milliseconds)
             }
         }
-        
+
+        if (player.knockbackActive) {
+            // smokeTrailVFX(player, 300, 100, 6);
+        }
     
         // Update player position and ultimate charge
         if (player.ultimateCharge >= 100) {
@@ -627,8 +630,6 @@ function startGame(selectedMap) {
         }
     }
 
-    
-
     function showFallVFX(player, duration = 1000) {
         console.log("Showing fall VFX for player:", player);
     
@@ -670,6 +671,8 @@ function startGame(selectedMap) {
                 opacity: 1
             });
         }
+
+        
     
         function animateBeams(timestamp) {
             vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
