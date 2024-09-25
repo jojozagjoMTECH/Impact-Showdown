@@ -70,6 +70,12 @@ let player2 = {
     ignoreGravity: false
 };
 
+const camera = {
+    x: 0,
+    y: 0,
+    zoom: 1
+};
+
 let gameLoopRunning = false;
 const gravity = 0.5;
 const friction = 0.9;
@@ -84,11 +90,17 @@ gameCanvas.height = window.innerHeight;
 vfxCanvas.width = window.innerWidth;
 vfxCanvas.height = window.innerHeight;
 
-const backgroundLayers = [
-    { image: new Image(), speed: 0.2, x: 0 },
-    { image: new Image(), speed: 0.5, x: 0 },
-    { image: new Image(), speed: 1.0, x: 0 }
-];
+function updateCanvasSize(canvas) {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight; // Increase the height to allow more falling space
+}
+
+
+// const backgroundLayers = [
+//     { image: new Image(), speed: 0.2, x: 0 },
+//     { image: new Image(), speed: 0.5, x: 0 },
+//     { image: new Image(), speed: 1.0, x: 0 }
+// ];
 
 // backgroundLayers[0].image.src = 'path/to/background1.png';
 // backgroundLayers[1].image.src = 'path/to/background2.png';
@@ -97,29 +109,32 @@ const backgroundLayers = [
 const maps = {
     map1: [
         { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
-        { x: 0.3, y: 0.68, width: 0.4, height: 0.02, allowDropThrough: true }
+        { x: 0.3, y: 0.68, width: 0.4, height: 0.02, allowDropThrough: true },
+        { maxDistanceThreshold: 3000, minZoom: 0.5, maxZoom: 1.5 }
     ],
     map2: [
         { x: 0.2, y: 0.8, width: 0.6, height: 0.02, allowDropThrough: false },
         { x: 0.1, y: 0.68, width: 0.1, height: 0.02, allowDropThrough: true },
-        { x: 0.8, y: 0.68, width: 0.1, height: 0.02, allowDropThrough: true }
+        { x: 0.8, y: 0.68, width: 0.1, height: 0.02, allowDropThrough: true },
+        { maxDistanceThreshold: 2500, minZoom: 0.6, maxZoom: 1.4 }
     ],
     map3: [
         { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
         { x: 0.2, y: 0.65, width: 0.6, height: 0.02, allowDropThrough: true },
-        { x: 0.3, y: 0.55, width: 0.4, height: 0.02, allowDropThrough: true }
-    ], 
+        { x: 0.3, y: 0.55, width: 0.4, height: 0.02, allowDropThrough: true },
+        { maxDistanceThreshold: 100, minZoom: 0.7, maxZoom: 1.3 }
+    ]
 };
 
 const mapBackgrounds = {
-    map1: { image: new Image(), speed: 0.5, x: 0 },
-    map2: { image: new Image(), speed: 0.5, x: 0 },
-    map3: { image: new Image(), speed: 0.5, x: 0 }
+    map1: { image: new Image(), speed: 0.1, x: 0 },
+    map2: { image: new Image(), speed: 0.1, x: 0 },
+    map3: { image: new Image(), speed: 0.1, x: 0 }
 };
 
-// mapBackgrounds.map1.image.src = 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg';
-// mapBackgrounds.map2.image.src = 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg';
-// mapBackgrounds.map3.image.src = 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg';
+mapBackgrounds.map1.image.src = 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg';
+mapBackgrounds.map2.image.src = 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg';
+mapBackgrounds.map3.image.src = 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg';
 
 const characters = [
     {
@@ -145,6 +160,7 @@ const characters = [
 
 let showHitboxes = false;
 let showImpactFrames = true;
+let CameraEnabled = true;
 
 document.getElementById('play-button').addEventListener('click', () => {
     document.getElementById('main-menu').classList.add('hidden');
@@ -260,6 +276,28 @@ function drawMapPreview(map, canvasId) {
     });
 }
 
+function updateBackground(currentMap) {
+    if (!mapBackgrounds[currentMap]) {
+        console.error(`Invalid map: ${currentMap}`);
+        return;
+    }
+    const background = mapBackgrounds[currentMap];
+    background.x -= (player1.velocityX + player2.velocityX) / 2 * background.speed;
+    if (background.x <= -gameCanvas.width) {
+        background.x = 0;
+    }
+}
+
+function drawBackground(context, currentMap) {
+    if (!mapBackgrounds[currentMap]) {
+        console.error(`Invalid map: ${currentMap}`);
+        return;
+    }
+    const background = mapBackgrounds[currentMap];
+    context.drawImage(background.image, background.x, 0, gameCanvas.width, gameCanvas.height);
+    context.drawImage(background.image, background.x + gameCanvas.width, 0, gameCanvas.width, gameCanvas.height);
+}
+
 
 // Draw the map previews
 drawMapPreview(maps.map1, 'map1-preview');
@@ -284,26 +322,100 @@ document.querySelectorAll('.map').forEach(button => {
         document.getElementById('game').classList.remove('hidden');
         document.getElementById('map-selection').classList.remove('flex');
 
-        // Scale the map data for the game canvas
-        const scaledMap = scaleMapData(maps[selectedMap], gameCanvas);
-        console.log(scaledMap)
-
-        startGame(scaledMap);
+        startGame(selectedMap); // Pass the string key directly
     });
 });
 
+
+///Camera Work///
+function calculateMidpoint(players) {
+    let sumX = 0, sumY = 0;
+    players.forEach(player => {
+        sumX += player.x;
+        sumY += player.y;
+    });
+    return { x: sumX / players.length, y: sumY / players.length };
+}
+
+function calculateMaxDistance(players) {
+    let maxDistance = 0;
+    for (let i = 0; i < players.length; i++) {
+        for (let j = i + 1; j < players.length; j++) {
+            const distance = Math.sqrt(Math.pow(players[j].x - players[i].x, 2) + Math.pow(players[j].y - players[i].y, 2));
+            if (distance > maxDistance) {
+                maxDistance = distance;
+            }
+        }
+    }
+    return maxDistance;
+}
+
+function lerp(start, end, t) {
+    return start + (end - start) * t;
+}
+
+const cameraFixedPostions = calculateMidpoint([player1, player2]);
+
+function updateCamera(camera, players, canvas, selectedMap) {
+    const midpoint = calculateMidpoint(players);
+    const maxDistance = calculateMaxDistance(players);
+
+    // Default settings
+    let maxDistanceThreshold = 3000;
+    let minZoom = 0.5;
+    let maxZoom = 1.5;
+
+    // Update camera settings based on the selected map
+    const mapSettings = maps[selectedMap];
+    if (mapSettings) {
+        const settings = mapSettings.find(item => item.maxDistanceThreshold !== undefined);
+        if (settings) {
+            console.log(settings)
+            maxDistanceThreshold = settings.maxDistanceThreshold;
+            minZoom = settings.minZoom;
+            maxZoom = settings.maxZoom;
+        }
+
+        const targetZoom = maxZoom - (maxDistance / maxDistanceThreshold) * (maxZoom - minZoom);
+
+        // Smoothly transition camera position
+        if (CameraEnabled) {
+            camera.x = lerp(camera.x, midpoint.x, 0.1);
+            camera.y = lerp(camera.y, midpoint.y, 0.1);
+            camera.zoom = lerp(camera.zoom, Math.max(minZoom, Math.min(maxZoom, targetZoom)), 0.1);
+        } else {
+            console.log(cameraFixedPostions.y);
+            camera.x = cameraFixedPostions.x * 2;
+            camera.y = cameraFixedPostions.y * 2;
+            camera.zoom = 1;
+        }
+    }
+}
+
+
 function startGame(selectedMap) {
     // Use the selected map data
-    platforms = selectedMap;
+    if (typeof selectedMap !== 'string' || !mapBackgrounds[selectedMap]) {
+        console.error(`Invalid map: ${selectedMap}`);
+        return;
+    }
+
+    const scaledMap = scaleMapData(maps[selectedMap], gameCanvas);
+    platforms = scaledMap;
+
 
     resetPlayer(player1);
     resetPlayer(player2);
     vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
     function gameLoop() {
+        // updateCanvasSize(camera, gameCanvas);
+        // updateCanvasSize(camera, vfxCanvas);
         context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
-        
+
         updateBackground(selectedMap);
         drawBackground(context, selectedMap);
+
+        updateCamera(camera, [player1, player2], gameCanvas, selectedMap);
         
         drawPlatforms();
         updatePlayer(player1);
@@ -314,28 +426,6 @@ function startGame(selectedMap) {
         checkGameOver();
         
         requestAnimationFrame(gameLoop);
-    }
-
-    function updateBackground(currentMap) {
-        if (!mapBackgrounds[currentMap]) {
-            console.error(`Invalid map: ${currentMap}`);
-            return;
-        }
-        const background = mapBackgrounds[currentMap];
-        background.x -= (player1.velocityX + player2.velocityX) / 2 * background.speed;
-        if (background.x <= -gameCanvas.width) {
-            background.x = 0;
-        }
-    }
-    
-    function drawBackground(context, currentMap) {
-        if (!mapBackgrounds[currentMap]) {
-            console.error(`Invalid map: ${currentMap}`);
-            return;
-        }
-        const background = mapBackgrounds[currentMap];
-        context.drawImage(background.image, background.x, 0, gameCanvas.width, gameCanvas.height);
-        context.drawImage(background.image, background.x + gameCanvas.width, 0, gameCanvas.width, gameCanvas.height);
     }
 
     function updatePlayer(player) {
@@ -357,31 +447,36 @@ function startGame(selectedMap) {
         }   
     
         // Check for ground collision
-        if (player.y + player.height >= gameCanvas.height) {
-            player.y = gameCanvas.height - player.height;
+        if (player.y + player.height >= gameCanvas.height + 600) {
+            player.y = gameCanvas.height + 600 - player.height;
             player.velocityY = 0;
+            player.velocityX = 0;
             player.onGround = true;
             player.knockbackActive = false; // Deactivate knockback when player hits the ground
         } else if (!player.onGround) {
             player.onGround = false;
         }
 
-        // Check for falling off the plaawtform
-        if (player.y > gameCanvas.height - 80 || player.x < -player.width || player.x > gameCanvas.width) {
+        // Check for falling off the platform
+        if (player.y + player.height >= gameCanvas.height + 600 || 
+            player.x < -player.width - camera.x || 
+            player.x > gameCanvas.width + camera.x) {
             if (!player.isFalling) {
                 player.isFalling = true; // Mark the player as falling
                 player.visible = false; // Hide the player
+                player.disableControls = true;
                 let otherPlayer = player === player2 ? player1 : player2;;
                 showFallVFX(player, 3000); // Show VFX for 1 second
                 applyImpactFrames(player, otherPlayer, platforms, 100) 
                 screenShake(20, 200);
-                player.lives -= 3;
+                // player.lives -= 3;
     
                 // Delay the resetPlayer call to allow the effect to show
                 setTimeout(() => {
                     resetPlayer(player);
                     player.isFalling = false; // Reset the falling flag
                     player.visible = true; // Show the player again
+                    player.disableControls = false;
                 }, 2000); // Delay for 2 seconds (2000 milliseconds)
             }
         }
@@ -408,8 +503,14 @@ function startGame(selectedMap) {
 
     function drawPlayer(context, player) {
         if (player.visible) {
+            // Adjust player position based on the camera
+            const adjustedX = (player.x - camera.x) * camera.zoom + gameCanvas.width / 2;
+            const adjustedY = (player.y - camera.y) * camera.zoom + gameCanvas.height / 2;
+            const adjustedWidth = player.width * camera.zoom;
+            const adjustedHeight = player.height * camera.zoom;
+    
             context.fillStyle = player.color;
-            context.fillRect(player.x, player.y, player.width, player.height);
+            context.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
             drawUltimateBar(context, player);
             drawPercentage(context, player);
             if (showHitboxes) {
@@ -419,29 +520,43 @@ function startGame(selectedMap) {
     }
 
     function drawUltimateBar(context, player) {
+        // Adjust position based on the camera
+        const adjustedX = (player.x - camera.x) * camera.zoom + gameCanvas.width / 2;
+        const adjustedY = (player.y - camera.y) * camera.zoom + gameCanvas.height / 2;
+        const adjustedWidth = player.width * camera.zoom;
+
         context.fillStyle = 'gray';
-        context.fillRect(player.x, player.y - 10, player.width, 5);
+        context.fillRect(adjustedX, adjustedY - 10 * camera.zoom, adjustedWidth, 5 * camera.zoom);
         context.fillStyle = 'yellow';
-        context.fillRect(player.x, player.y - 10, player.width * (player.ultimateCharge / 100), 5);
+        context.fillRect(adjustedX, adjustedY - 10 * camera.zoom, adjustedWidth * (player.ultimateCharge / 100), 5 * camera.zoom);
         if (player.ultimateCharge > 100) {
             player.ultimateCharge = 100;
         }
     }
 
     function drawPercentage(context, player) {
+        // Adjust position based on the camera
+        const adjustedX = (player.x - camera.x) * camera.zoom + gameCanvas.width / 2;
+        const adjustedY = (player.y - camera.y) * camera.zoom + gameCanvas.height / 2;
+    
         context.fillStyle = 'white';
-        context.font = '12px Arial';
-        context.fillText(`${player.percentage}%`, player.x, player.y - 20);
+        context.font = `${12 * camera.zoom}px Arial`;
+        context.fillText(`${player.percentage}%`, adjustedX, adjustedY - 20 * camera.zoom);
     }
 
     function drawPlatforms() {
         platforms.forEach(platform => {
-            // Adjust platform position based on the average player position
-            // platform.x -= (player1.velocityX + player2.velocityX) / 2 * 0.5;
+            // Adjust platform position based on the camera
+            const adjustedX = (platform.x - camera.x) * camera.zoom + gameCanvas.width / 2;
+            const adjustedY = (platform.y - camera.y) * camera.zoom + gameCanvas.height / 2;
+            const adjustedWidth = platform.width * camera.zoom;
+            const adjustedHeight = platform.height * camera.zoom;
+    
             context.fillStyle = platform.color || 'green';
-            context.fillRect(platform.x, platform.y, platform.width, platform.height);
+            context.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
         });
     }
+    
 
     function checkPlatformCollision(player) {
         player.onGround = false;
@@ -606,8 +721,14 @@ function startGame(selectedMap) {
     }
 
     function drawHitbox(context, player) {
+        // Adjust position based on the camera
+        const adjustedX = (player.x - camera.x) * camera.zoom + gameCanvas.width / 2;
+        const adjustedY = (player.y - camera.y) * camera.zoom + gameCanvas.height / 2;
+        const adjustedWidth = player.width * camera.zoom;
+        const adjustedHeight = player.height * camera.zoom;
+    
         context.strokeStyle = 'red';
-        context.strokeRect(player.x, player.y, player.width, player.height);
+        context.strokeRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
     }
 
     document.addEventListener('keydown', (event) => {
@@ -749,15 +870,15 @@ function startGame(selectedMap) {
         if (playerX < 0) {
             startX = 0;
             startY = playerY + playerHeight / 2;
-            console.log("bottom")
+            console.log("bottom");
         } else if (playerX + playerWidth > gameCanvas.width) {
             startX = gameCanvas.width;
             startY = playerY + playerHeight / 2;
-            console.log("left")
+            console.log("left");
         } else {
             startX = playerX + playerWidth / 2;
             startY = playerY + playerHeight / 2;
-            console.log("bottom")
+            console.log("bottom");
         }
     
         const beamsData = [];
@@ -772,8 +893,6 @@ function startGame(selectedMap) {
                 opacity: 1
             });
         }
-
-        
     
         function animateBeams(timestamp) {
             vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
@@ -782,12 +901,12 @@ function startGame(selectedMap) {
                 beam.progress += 0.03; // Adjust the speed of the rise
                 beam.opacity = 1.1 - beam.progress;
     
-                const x = Math.max(0, Math.min(vfxCanvas.width, startX + beam.offsetX));
-                const y = Math.max(0, Math.min(vfxCanvas.height, startY - beam.startHeight - beam.progress * (gameCanvas.height / 2) + beam.offsetY));
+                const x = (startX + beam.offsetX - camera.x) * camera.zoom + vfxCanvas.width / 2;
+                const y = (startY - beam.startHeight - beam.progress * (gameCanvas.height / 2) + beam.offsetY - camera.y) * camera.zoom + vfxCanvas.height / 2;
     
                 vfxContext.fillStyle = beam.color;
                 vfxContext.globalAlpha = beam.opacity;
-                vfxContext.fillRect(x, y, beamWidth, beam.height);
+                vfxContext.fillRect(x, y, beamWidth * camera.zoom, beam.height * camera.zoom);
             });
     
             if (beamsData.some(beam => beam.progress < 1)) {
@@ -800,6 +919,7 @@ function startGame(selectedMap) {
     
         requestAnimationFrame(animateBeams);
     }
+    
 
     function shootLaserBeam(player, opponent) {
         // Make the player jump up in the air and hover
