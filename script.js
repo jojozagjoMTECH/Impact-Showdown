@@ -110,31 +110,24 @@ const maps = {
     map1: [
         { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
         { x: 0.3, y: 0.68, width: 0.4, height: 0.02, allowDropThrough: true },
-        { maxDistanceThreshold: 3000, minZoom: 0.5, maxZoom: 1.5 }
+        { maxDistanceThreshold: 3000, minZoom: 0.5, maxZoom: 1.5 },
+        { backgroundImage: 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg', speed: 0.1}
     ],
     map2: [
         { x: 0.2, y: 0.8, width: 0.6, height: 0.02, allowDropThrough: false },
         { x: 0.1, y: 0.68, width: 0.1, height: 0.02, allowDropThrough: true },
         { x: 0.8, y: 0.68, width: 0.1, height: 0.02, allowDropThrough: true },
-        { maxDistanceThreshold: 2500, minZoom: 0.6, maxZoom: 1.4 }
+        { maxDistanceThreshold: 2500, minZoom: 0.6, maxZoom: 1.4 },
+        { backgroundImage: 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg', speed: 0.1}
     ],
     map3: [
         { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
         { x: 0.2, y: 0.65, width: 0.6, height: 0.02, allowDropThrough: true },
         { x: 0.3, y: 0.55, width: 0.4, height: 0.02, allowDropThrough: true },
-        { maxDistanceThreshold: 100, minZoom: 0.7, maxZoom: 1.3 }
+        { maxDistanceThreshold: 100, minZoom: 0.7, maxZoom: 1.3 },
+        { backgroundImage: 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg', speed: 0.1}
     ]
 };
-
-const mapBackgrounds = {
-    map1: { image: new Image(), speed: 0.1, x: 0 },
-    map2: { image: new Image(), speed: 0.1, x: 0 },
-    map3: { image: new Image(), speed: 0.1, x: 0 }
-};
-
-mapBackgrounds.map1.image.src = 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg';
-mapBackgrounds.map2.image.src = 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg';
-mapBackgrounds.map3.image.src = 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg';
 
 const characters = [
     {
@@ -277,25 +270,33 @@ function drawMapPreview(map, canvasId) {
 }
 
 function updateBackground(currentMap) {
-    if (!mapBackgrounds[currentMap]) {
+    const mapSettings = maps[currentMap];
+    if (!mapSettings) {
         console.error(`Invalid map: ${currentMap}`);
         return;
     }
-    const background = mapBackgrounds[currentMap];
-    background.x -= (player1.velocityX + player2.velocityX) / 2 * background.speed;
-    if (background.x <= -gameCanvas.width) {
-        background.x = 0;
+    const background = mapSettings.find(item => item.backgroundImage !== undefined);
+    if (background) {
+        background.x -= (player1.velocityX + player2.velocityX) / 2 * background.speed;
+        if (background.x <= -gameCanvas.width) {
+            background.x = 0;
+        }
     }
 }
 
 function drawBackground(context, currentMap) {
-    if (!mapBackgrounds[currentMap]) {
+    const mapSettings = maps[currentMap];
+    if (!mapSettings) {
         console.error(`Invalid map: ${currentMap}`);
         return;
     }
-    const background = mapBackgrounds[currentMap];
-    context.drawImage(background.image, background.x, 0, gameCanvas.width, gameCanvas.height);
-    context.drawImage(background.image, background.x + gameCanvas.width, 0, gameCanvas.width, gameCanvas.height);
+    const background = mapSettings.find(item => item.backgroundImage !== undefined);
+    if (background) {
+        const image = new Image();
+        image.src = background.backgroundImage;
+        context.drawImage(image, background.x, 0, gameCanvas.width, gameCanvas.height);
+        context.drawImage(image, background.x + gameCanvas.width, 0, gameCanvas.width, gameCanvas.height);
+    }
 }
 
 
@@ -370,7 +371,6 @@ function updateCamera(camera, players, canvas, selectedMap) {
     if (mapSettings) {
         const settings = mapSettings.find(item => item.maxDistanceThreshold !== undefined);
         if (settings) {
-            console.log(settings)
             maxDistanceThreshold = settings.maxDistanceThreshold;
             minZoom = settings.minZoom;
             maxZoom = settings.maxZoom;
@@ -395,7 +395,7 @@ function updateCamera(camera, players, canvas, selectedMap) {
 
 function startGame(selectedMap) {
     // Use the selected map data
-    if (typeof selectedMap !== 'string' || !mapBackgrounds[selectedMap]) {
+    if (typeof selectedMap !== 'string' || !maps[selectedMap].some(item => item.backgroundImage)) {
         console.error(`Invalid map: ${selectedMap}`);
         return;
     }
@@ -407,12 +407,14 @@ function startGame(selectedMap) {
     resetPlayer(player1);
     resetPlayer(player2);
     vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+
+    updateBackground(selectedMap);
     function gameLoop() {
         // updateCanvasSize(camera, gameCanvas);
         // updateCanvasSize(camera, vfxCanvas);
         context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
 
-        updateBackground(selectedMap);
+        // updateBackground(selectedMap);
         drawBackground(context, selectedMap);
 
         updateCamera(camera, [player1, player2], gameCanvas, selectedMap);
@@ -467,7 +469,7 @@ function startGame(selectedMap) {
                 player.disableControls = true;
                 let otherPlayer = player === player2 ? player1 : player2;;
                 showFallVFX(player, 3000); // Show VFX for 1 second
-                applyImpactFrames(player, otherPlayer, platforms, 100) 
+                applyImpactFrames(player, otherPlayer, platforms, context, 100) 
                 screenShake(20, 200);
                 // player.lives -= 3;
     
@@ -800,30 +802,34 @@ function startGame(selectedMap) {
         }, 100);
     }
 
-    function applyImpactFrames(player, opponent, platforms, duration = 100, switchInterval = 50) {
+    function applyImpactFrames(player, opponent, platforms, context, duration = 100, switchInterval = 50) {
         if (showImpactFrames) {
             console.log("Applying impact frames");
-        
+    
             // Save original styles
             const originalPlayerColor = player.color;
             const originalOpponentColor = opponent.color;
             const originalPlatformColors = platforms.map(platform => platform.color);
             const originalGameCanvasStyle = gameCanvas.style.backgroundColor;
-        
+    
             let startTime = Date.now();
-        
+    
             function switchColors() {
                 const elapsed = Date.now() - startTime;
                 if (elapsed < duration) {
                     const isBlack = Math.floor(elapsed / switchInterval) % 2 === 0; // Switch colors based on switchInterval
                     const color = isBlack ? 'black' : 'white';
                     const bgColor = isBlack ? 'white' : 'black';
-        
+    
                     player.color = color;
                     opponent.color = color;
                     platforms.forEach(platform => platform.color = color);
                     gameCanvas.style.backgroundColor = bgColor;
-        
+    
+                    // Draw a black and white overlay
+                    context.fillStyle = bgColor;
+                    context.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
+    
                     requestAnimationFrame(switchColors);
                 } else {
                     // Restore original styles after duration
@@ -834,24 +840,11 @@ function startGame(selectedMap) {
                     console.log("Impact frames ended");
                 }
             }
-        
+    
             switchColors();
-        
-            // Apply VFX around players
-            // function drawImpactVFX() {
-            //     vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-            //     vfxContext.fillStyle = 'rgba(255, 0, 0, 0.5)';
-            //     vfxContext.beginPath();
-            //     vfxContext.arc(player.x + player.width / 2, player.y + player.height / 2, 50, 0, 2 * Math.PI);
-            //     vfxContext.fill();
-            //     vfxContext.beginPath();
-            //     vfxContext.arc(opponent.x + opponent.width / 2, opponent.y + opponent.height / 2, 50, 0, 2 * Math.PI);
-            //     vfxContext.fill();
-            // }
-            // drawImpactVFX();
         }
     }
-
+    
     function showFallVFX(player, duration = 1000) {
         console.log("Showing fall VFX for player:", player);
     
