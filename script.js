@@ -83,12 +83,16 @@ const gameCanvas = document.getElementById('game-canvas');
 const context = gameCanvas.getContext('2d');
 const vfxCanvas = document.getElementById('vfxCanvas');
 const vfxContext = vfxCanvas.getContext('2d');
+const bgCanvas = document.getElementById('bg-canvas');
+const bgContext = bgCanvas.getContext('2d');
 
 // Ensure canvas scales properly to fit the screen size
 gameCanvas.width = window.innerWidth;
 gameCanvas.height = window.innerHeight;
 vfxCanvas.width = window.innerWidth;
 vfxCanvas.height = window.innerHeight;
+bgCanvas.width = window.innerWidth;
+bgCanvas.height = window.innerHeight;
 
 function updateCanvasSize(canvas) {
     canvas.width = window.innerWidth;
@@ -111,23 +115,76 @@ const maps = {
         { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
         { x: 0.3, y: 0.68, width: 0.4, height: 0.02, allowDropThrough: true },
         { maxDistanceThreshold: 3000, minZoom: 0.5, maxZoom: 1.5 },
-        { backgroundImage: 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg', speed: 0.1}
+        { backgroundImage: 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg', speed: 0.1, x: 0, y: 0}
     ],
     map2: [
         { x: 0.2, y: 0.8, width: 0.6, height: 0.02, allowDropThrough: false },
         { x: 0.1, y: 0.68, width: 0.1, height: 0.02, allowDropThrough: true },
         { x: 0.8, y: 0.68, width: 0.1, height: 0.02, allowDropThrough: true },
         { maxDistanceThreshold: 2500, minZoom: 0.6, maxZoom: 1.4 },
-        { backgroundImage: 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg', speed: 0.1}
+        { backgroundImage: 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg', speed: 0.1,  x: 0, y: 0}
     ],
     map3: [
         { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
         { x: 0.2, y: 0.65, width: 0.6, height: 0.02, allowDropThrough: true },
         { x: 0.3, y: 0.55, width: 0.4, height: 0.02, allowDropThrough: true },
         { maxDistanceThreshold: 100, minZoom: 0.7, maxZoom: 1.3 },
-        { backgroundImage: 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg', speed: 0.1}
+        { backgroundImage: 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg', speed: 0.1, x: 0, y: 0}
     ]
 };
+
+let backgroundImage;
+
+function loadBackgroundImage(currentMap) {
+    const mapSettings = maps[currentMap];
+    if (!mapSettings) {
+        console.error(`Invalid map: ${currentMap}`);
+        return;
+    }
+    const background = mapSettings.find(item => item.backgroundImage !== undefined);
+    if (background) {
+        backgroundImage = new Image();
+        backgroundImage.src = background.backgroundImage;
+    }
+}
+
+function updateBackground(currentMap) {
+    const mapSettings = maps[currentMap];
+    if (!mapSettings) {
+        console.error(`Invalid map: ${currentMap}`);
+        return;
+    }
+    const background = mapSettings.find(item => item.backgroundImage !== undefined);
+    if (background) {
+        background.x -= (player1.velocityX + player2.velocityX) / 2 * background.speed;
+        if (background.x <= -bgCanvas.width) {
+            background.x = 0;
+        }
+    }
+}
+
+function drawBackground(context, currentMap) {
+    const mapSettings = maps[currentMap];
+    if (!mapSettings) {
+        console.error(`Invalid map: ${currentMap}`);
+        return;
+    }
+    const background = mapSettings.find(item => item.backgroundImage !== undefined);
+    if (background && backgroundImage) {
+        // Check if backgroundImage is a valid image element
+        if (backgroundImage instanceof HTMLImageElement) {
+            if (backgroundImage !== background.backgroundImage) {
+                context.drawImage(backgroundImage, background.x, 0, bgCanvas.width, bgCanvas.height);
+                context.drawImage(backgroundImage, background.x + bgCanvas.width, 0, bgCanvas.width, bgCanvas.height);
+            }
+        } else {
+            context.fillStyle = backgroundImage;
+            context.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
+        }
+    } else {
+        console.error('background or backgroundImage is undefined');
+    }
+}
 
 const characters = [
     {
@@ -269,37 +326,6 @@ function drawMapPreview(map, canvasId) {
     });
 }
 
-function updateBackground(currentMap) {
-    const mapSettings = maps[currentMap];
-    if (!mapSettings) {
-        console.error(`Invalid map: ${currentMap}`);
-        return;
-    }
-    const background = mapSettings.find(item => item.backgroundImage !== undefined);
-    if (background) {
-        background.x -= (player1.velocityX + player2.velocityX) / 2 * background.speed;
-        if (background.x <= -gameCanvas.width) {
-            background.x = 0;
-        }
-    }
-}
-
-function drawBackground(context, currentMap) {
-    const mapSettings = maps[currentMap];
-    if (!mapSettings) {
-        console.error(`Invalid map: ${currentMap}`);
-        return;
-    }
-    const background = mapSettings.find(item => item.backgroundImage !== undefined);
-    if (background) {
-        const image = new Image();
-        image.src = background.backgroundImage;
-        context.drawImage(image, background.x, 0, gameCanvas.width, gameCanvas.height);
-        context.drawImage(image, background.x + gameCanvas.width, 0, gameCanvas.width, gameCanvas.height);
-    }
-}
-
-
 // Draw the map previews
 drawMapPreview(maps.map1, 'map1-preview');
 drawMapPreview(maps.map2, 'map2-preview');
@@ -384,7 +410,6 @@ function updateCamera(camera, players, canvas, selectedMap) {
             camera.y = lerp(camera.y, midpoint.y, 0.1);
             camera.zoom = lerp(camera.zoom, Math.max(minZoom, Math.min(maxZoom, targetZoom)), 0.1);
         } else {
-            console.log(cameraFixedPostions.y);
             camera.x = cameraFixedPostions.x * 2;
             camera.y = cameraFixedPostions.y * 2;
             camera.zoom = 1;
@@ -407,15 +432,16 @@ function startGame(selectedMap) {
     resetPlayer(player1);
     resetPlayer(player2);
     vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+    bgContext.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
 
-    updateBackground(selectedMap);
+    loadBackgroundImage(selectedMap);
     function gameLoop() {
         // updateCanvasSize(camera, gameCanvas);
         // updateCanvasSize(camera, vfxCanvas);
         context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
 
-        // updateBackground(selectedMap);
         drawBackground(context, selectedMap);
+        updateBackground(selectedMap);
 
         updateCamera(camera, [player1, player2], gameCanvas, selectedMap);
         
@@ -810,7 +836,7 @@ function startGame(selectedMap) {
             const originalPlayerColor = player.color;
             const originalOpponentColor = opponent.color;
             const originalPlatformColors = platforms.map(platform => platform.color);
-            const originalGameCanvasStyle = gameCanvas.style.backgroundColor;
+            const originalGameCanvasStyle = backgroundImage;
     
             let startTime = Date.now();
     
@@ -824,9 +850,12 @@ function startGame(selectedMap) {
                     player.color = color;
                     opponent.color = color;
                     platforms.forEach(platform => platform.color = color);
-                    gameCanvas.style.backgroundColor = bgColor;
+                    console.log(backgroundImage)
+                    backgroundImage = bgColor;
+                    console.log(backgroundImage)
     
-                    // Draw a black and white overlay
+                    // Draw a black and white overlay on the gameCanvas
+                    context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
                     context.fillStyle = bgColor;
                     context.fillRect(0, 0, gameCanvas.width, gameCanvas.height);
     
@@ -836,7 +865,7 @@ function startGame(selectedMap) {
                     player.color = originalPlayerColor;
                     opponent.color = originalOpponentColor;
                     platforms.forEach((platform, index) => platform.color = originalPlatformColors[index]);
-                    gameCanvas.style.backgroundColor = originalGameCanvasStyle;
+                    backgroundImage = originalGameCanvasStyle;
                     console.log("Impact frames ended");
                 }
             }
