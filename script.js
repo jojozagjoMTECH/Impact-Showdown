@@ -14,6 +14,7 @@ let player1 = {
     },
     percentage: 0,
     knockbackTime: 0,
+    knockbackFriction: false,
     ultimateCharge: 0,
     ultimateReady: false,
     character: 0, // Will be updated based on selected character
@@ -93,12 +94,6 @@ vfxCanvas.width = window.innerWidth;
 vfxCanvas.height = window.innerHeight;
 bgCanvas.width = window.innerWidth;
 bgCanvas.height = window.innerHeight;
-
-function updateCanvasSize(canvas) {
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight; // Increase the height to allow more falling space
-}
-
 
 // const backgroundLayers = [
 //     { image: new Image(), speed: 0.2, x: 0 },
@@ -210,7 +205,7 @@ const characters = [
 
 let showHitboxes = false;
 let showImpactFrames = true;
-let CameraEnabled = true;
+let FixedCamera = false;
 
 document.getElementById('play-button').addEventListener('click', () => {
     document.getElementById('main-menu').classList.add('hidden');
@@ -234,6 +229,11 @@ document.getElementById('toggle-hitboxes').addEventListener('change', (event) =>
 document.getElementById('toggle-impactframes').addEventListener('change', (event) => {
     showImpactFrames = event.target.checked;
 });
+
+document.getElementById('toggle-camera').addEventListener('change', (event) => {
+    FixedCamera = event.target.checked;
+});
+
 
 function updatePlayerPreview(player, characterId) {
     const character = characters.find(char => char.id === characterId);
@@ -405,7 +405,7 @@ function updateCamera(camera, players, canvas, selectedMap) {
         const targetZoom = maxZoom - (maxDistance / maxDistanceThreshold) * (maxZoom - minZoom);
 
         // Smoothly transition camera position
-        if (CameraEnabled) {
+        if (!FixedCamera) {
             camera.x = lerp(camera.x, midpoint.x, 0.1);
             camera.y = lerp(camera.y, midpoint.y, 0.1);
             camera.zoom = lerp(camera.zoom, Math.max(minZoom, Math.min(maxZoom, targetZoom)), 0.1);
@@ -474,13 +474,12 @@ function startGame(selectedMap) {
             checkPlatformCollision(player);
         }   
     
-        // Check for ground collision
+        // Check for GameCanvas collision
         if (player.y + player.height >= gameCanvas.height + 600) {
             player.y = gameCanvas.height + 600 - player.height;
             player.velocityY = 0;
             player.velocityX = 0;
             player.onGround = true;
-            player.knockbackActive = false; // Deactivate knockback when player hits the ground
         } else if (!player.onGround) {
             player.onGround = false;
         }
@@ -519,12 +518,11 @@ function startGame(selectedMap) {
         }
         
         // Deactivate knockback when player hits the ground
-        if (player.knockbackActive && player.onGround) {
+        if (player.knockbackFriction && player.onGround) {
             player.velocityX *= friction;
             if (Math.abs(player.velocityX) < 0.1) { // Threshold to stop the player
                 player.velocityX = 0;
-                player.knockbackActive = false;
-                player.disableControls = false;
+                player.knockbackFriction = false
             }
         }
     }
@@ -584,22 +582,36 @@ function startGame(selectedMap) {
             context.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
         });
     }
-    
 
     function checkPlatformCollision(player) {
         player.onGround = false;
+        const dampingFactor = 0.8; // Adjust this value to control the speed decrease with each bounce
+    
         platforms.forEach(platform => {
             if (player.x < platform.x + platform.width &&
-                player.x + player.width > platform.x &&
-                player.y + player.height >= platform.y &&
-                player.y + player.height <= platform.y + platform.height &&
-                player.velocityY >= 0) { // Ensure the player is falling down onto the platform
-                player.y = platform.y - player.height;
-                player.velocityY = 0;
-                player.onGround = true;
+                player.x + player.width > platform.x) {
+                // Check if the player is touching the top of the platform
+                if (player.y + player.height >= platform.y &&
+                    player.y < platform.y) {
+                    if (player.knockbackActive) {
+                        player.velocityY = -Math.abs(player.velocityY) / dampingFactor; // Bounce off the platform with reduced speed
+                    } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the platform
+                        player.y = platform.y - player.height;
+                        player.velocityY = 0;
+                        player.onGround = true;
+                    }
+                }
+                // Check if the player is touching the bottom of the platform
+                if (player.knockbackActive && player.y <= platform.y + platform.height &&
+                    player.y + player.height > platform.y + platform.height &&
+                    player.velocityY < 0) { // Ensure the player is moving upwards
+                    player.y = platform.y + platform.height;
+                    player.velocityY = Math.abs(player.velocityY) * dampingFactor; // Bounce off the platform with reduced speed
+                }
             }
         });
     }
+    
     
 
     function drawUI() {
@@ -711,7 +723,8 @@ function startGame(selectedMap) {
             applyDamage(opponent, 10);
             showHitVFX(opponent);
             screenShake(3, 500);
-            player.ultimateCharge += 10;
+            player.ultimateCharge += 5;
+            opponent.ultimateCharge += 10;
             // Scale knockback based on percentage
             applyKnockback(player, opponent);
         }
@@ -731,14 +744,28 @@ function startGame(selectedMap) {
     }
 
     function applyKnockback(player, opponent) {
-        const knockback = opponent.percentage * 0.01;
+        const knockback = opponent.percentage * 0.001;
+        const attackStrength = player.attackStrength || 1; // Default attack strength if not defined
+        const opponentWeight = opponent.weight || 1; // Default weight if not defined
+    
         opponent.velocityX = (opponent.x - player.x) * knockback;
         opponent.velocityY = -5 * (opponent.x - player.x) * knockback;
         opponent.knockbackActive = true;
         opponent.disableControls = true;
-        opponent.knockbackTime = knockback;
-    }
     
+        // Calculate knockback time based on knockback, attack strength, and opponent weight
+        opponent.knockbackTime = (knockback * attackStrength / opponentWeight) * 500000; // Convert to milliseconds
+    
+        // Manage knockback time
+        if (opponent.knockbackTime > 0) {
+            console.log(opponent.knockbackTime)
+            setTimeout(() => {
+                opponent.knockbackFriction = true;
+                opponent.knockbackActive = false;
+                opponent.disableControls = false;
+            }, opponent.knockbackTime);
+        }
+    }
 
 
     function checkHit(attacker, defender) {
@@ -805,8 +832,8 @@ function startGame(selectedMap) {
                     );
         
                     if (currentPlatform && currentPlatform.allowDropThrough) {
-                        player.y += 35;
-                        // player.onGround = false
+                        player.y += currentPlatform.height + 30;
+                        player.ignoreCollisions = false
                     }
                     break;
                 case player.controls.right:
@@ -850,9 +877,7 @@ function startGame(selectedMap) {
                     player.color = color;
                     opponent.color = color;
                     platforms.forEach(platform => platform.color = color);
-                    console.log(backgroundImage)
                     backgroundImage = bgColor;
-                    console.log(backgroundImage)
     
                     // Draw a black and white overlay on the gameCanvas
                     context.clearRect(0, 0, gameCanvas.width, gameCanvas.height);
@@ -964,14 +989,17 @@ function startGame(selectedMap) {
     
                 player.velocityY = -gravity; // Hover in the air
                 player.velocityX = 0;
-
+    
                 chargeProgress += 0.02; // Adjust the speed of the charge-up
                 const currentRadius = chargeRadius + chargeProgress * 50;
+    
+                const x = (startX - camera.x) * camera.zoom + vfxCanvas.width / 2;
+                const y = (startY - camera.y) * camera.zoom + vfxCanvas.height / 2;
     
                 vfxContext.fillStyle = chargeColor;
                 vfxContext.globalAlpha = 0.5 + 0.5 * Math.sin(chargeProgress * Math.PI); // Pulsating effect
                 vfxContext.beginPath();
-                vfxContext.arc(startX, startY, currentRadius, 0, 2 * Math.PI);
+                vfxContext.arc(x, y, currentRadius * camera.zoom, 0, 2 * Math.PI);
                 vfxContext.fill();
     
                 if (chargeProgress < 1) {
@@ -995,13 +1023,13 @@ function startGame(selectedMap) {
     
                 let laserProgress = 0;
                 let laserOpacity = 1;
-
-                screenShake(30, 300)
-                applyImpactFrames(player, opponent, platforms, 200) 
+    
+                screenShake(30, 300);
+                applyImpactFrames(player, opponent, platforms, context, 200);
     
                 function animateLaser(timestamp) {
                     vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-
+    
                     player.velocityY = -gravity; // Hover in the air
                     player.velocityX = 0;
     
@@ -1009,17 +1037,30 @@ function startGame(selectedMap) {
                     const currentX = startX + (endX - startX) * laserProgress;
                     const currentY = startY + (endY - startY) * laserProgress;
     
+                    const x1 = (startX - camera.x) * camera.zoom + vfxCanvas.width / 2;
+                    const y1 = (startY - camera.y) * camera.zoom + vfxCanvas.height / 2;
+                    const x2 = (currentX - camera.x) * camera.zoom + vfxCanvas.width / 2;
+                    const y2 = (currentY - camera.y) * camera.zoom + vfxCanvas.height / 2;
+    
                     vfxContext.strokeStyle = laserColor;
-                    vfxContext.lineWidth = laserWidth;
+                    vfxContext.lineWidth = laserWidth * camera.zoom;
                     vfxContext.globalAlpha = laserOpacity;
                     vfxContext.beginPath();
-                    vfxContext.moveTo(startX, startY);
-                    vfxContext.lineTo(currentX, currentY);
+                    vfxContext.moveTo(x1, y1);
+                    vfxContext.lineTo(x2, y2);
                     vfxContext.stroke();
     
                     if (laserProgress < 1) {
                         requestAnimationFrame(animateLaser);
                     } else {
+                        // Check for hit when the laser progress is finished
+                        if (checkHitLaser(x2, y2, opponent)) {
+                            applyDamage(opponent, 30); // Higher damage for ultimate
+                            showHitVFX(opponent);
+                            screenShake(5, 500);
+                            applyKnockback(player, opponent);
+                        }
+    
                         // Start fading out the laser
                         const fadeDuration = 500; // Duration of the fade out
                         const fadeStep = 0.02; // Step for each frame
@@ -1029,11 +1070,11 @@ function startGame(selectedMap) {
                             laserOpacity -= fadeStep;
                             if (laserOpacity > 0) {
                                 vfxContext.strokeStyle = laserColor;
-                                vfxContext.lineWidth = laserWidth;
+                                vfxContext.lineWidth = laserWidth * camera.zoom;
                                 vfxContext.globalAlpha = laserOpacity;
                                 vfxContext.beginPath();
-                                vfxContext.moveTo(startX, startY);
-                                vfxContext.lineTo(endX, endY);
+                                vfxContext.moveTo(x1, y1);
+                                vfxContext.lineTo(x2, y2);
                                 vfxContext.stroke();
                                 requestAnimationFrame(fadeLaser);
                             } else {
@@ -1048,25 +1089,22 @@ function startGame(selectedMap) {
     
                 requestAnimationFrame(animateLaser);
     
-                // Check for hit during the laser
+                // End hover after the laser duration
                 setTimeout(() => {
-                    if (checkHit(player, opponent)) {
-                        applyDamage(opponent, 30); // Higher damage for ultimate
-                        showHitVFX(opponent);
-                        screenShake(5, 500);
-                        // Scale knockback based on percentage
-                        const knockback = opponent.percentage * 0.05;
-                        opponent.velocityX = (opponent.x - player.x) * knockback;
-                        opponent.velocityY = -10 * knockback;
-                        opponent.knockbackActive = true;
-                    }
-                    player.ignoreCollisions = false; // End hover
+                    player.ignoreCollisions = false;
                 }, laserDuration);
             }
     
             requestAnimationFrame(animateCharge);
         }, 200); // Delay to simulate the jump
     }
+    
+    function checkHitLaser(laserX, laserY, opponent) {
+        return laserX > opponent.x && laserX < opponent.x + opponent.width &&
+               laserY > opponent.y && laserY < opponent.y + opponent.height;
+    }
+    
+    
 
     function playCutscene(player, opponent) {
         console.log("Playing cutscene for player:", player);
