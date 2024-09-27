@@ -112,21 +112,21 @@ const maps = {
         { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
         { x: 0.3, y: 0.68, width: 0.4, height: 0.02, allowDropThrough: true },
         { maxDistanceThreshold: 3000, minZoom: 0.3, maxZoom: 1.2 },
-        { backgroundImage: 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg', speed: 0.1, x: 0, y: 0}
+        { backgroundImage: 'images/BackgroundImages/mountainsSnow.jpg', speed: 0.1, x: 0, y: 0}
     ],
     map2: [
         { x: 0.2, y: 0.8, width: 0.6, height: 0.02, allowDropThrough: false },
         { x: 0.1, y: 0.68, width: 0.1, height: 0.02, allowDropThrough: true },
         { x: 0.8, y: 0.68, width: 0.1, height: 0.02, allowDropThrough: true },
         { maxDistanceThreshold: 2500, minZoom: 0.6, maxZoom: 1.4 },
-        { backgroundImage: 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg', speed: 0.1,  x: 0, y: 0}
+        { backgroundImage: 'images/BackgroundImages/mountainsDay.webp', speed: 0.1,  x: 0, y: 0}
     ],
     map3: [
         { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
         { x: 0.2, y: 0.65, width: 0.6, height: 0.02, allowDropThrough: true },
         { x: 0.3, y: 0.55, width: 0.4, height: 0.02, allowDropThrough: true },
         { maxDistanceThreshold: 100, minZoom: 0.7, maxZoom: 1.3 },
-        { backgroundImage: 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg', speed: 0.1, x: 0, y: 0}
+        { backgroundImage: 'images/BackgroundImages/mountainsSunset.webp', speed: 0.1, x: 0, y: 0}
     ]
 };
 
@@ -316,17 +316,32 @@ function drawMapPreview(map, canvasId) {
     const mapPreviewCanvas = document.getElementById(canvasId);
     const mapPreviewContext = mapPreviewCanvas.getContext('2d');
 
-    mapPreviewContext.clearRect(0, 0, mapPreviewCanvas.width, mapPreviewCanvas.height);
+    // Extract the background image and other settings
+    const settings = map.find(item => item.backgroundImage);
+    const platforms = map.filter(item => item.x !== undefined && item.y !== undefined);
 
-    map.forEach(platform => {
-        const x = platform.x * mapPreviewCanvas.width;
-        const y = platform.y * mapPreviewCanvas.height;
-        const width = platform.width * mapPreviewCanvas.width + 2;
-        const height = platform.height * mapPreviewCanvas.height + 2;
+    // Load the background image
+    const backgroundImage = new Image();
+    backgroundImage.src = settings.backgroundImage;
 
-        mapPreviewContext.fillStyle = platform.allowDropThrough ? 'rgba(0, 128, 0, 0.5)' : 'rgba(0, 128, 0, 1)';
-        mapPreviewContext.fillRect(x, y, width, height);
-    });
+    backgroundImage.onload = () => {
+        // Clear the canvas
+        mapPreviewContext.clearRect(0, 0, mapPreviewCanvas.width, mapPreviewCanvas.height);
+
+        // Draw the background image
+        mapPreviewContext.drawImage(backgroundImage, 0, 0, mapPreviewCanvas.width, mapPreviewCanvas.height);
+
+        // Draw the platforms
+        platforms.forEach(platform => {
+            const x = platform.x * mapPreviewCanvas.width;
+            const y = platform.y * mapPreviewCanvas.height;
+            const width = platform.width * mapPreviewCanvas.width + 2;
+            const height = platform.height * mapPreviewCanvas.height + 2;
+
+            mapPreviewContext.fillStyle = platform.allowDropThrough ? 'rgba(0, 128, 0, 0.5)' : 'rgba(0, 128, 0, 1)';
+            mapPreviewContext.fillRect(x, y, width, height);
+        });
+    };
 }
 
 // Draw the map previews
