@@ -173,6 +173,7 @@ function drawBackground(context, currentMap) {
             if (backgroundImage !== background.backgroundImage) {
                 context.drawImage(backgroundImage, background.x, 0, bgCanvas.width, bgCanvas.height);
                 context.drawImage(backgroundImage, background.x + bgCanvas.width, 0, bgCanvas.width, bgCanvas.height);
+                context.drawImage(backgroundImage, background.x - bgCanvas.width, 0, bgCanvas.width, bgCanvas.height);
             }
         } else {
             context.fillStyle = backgroundImage;
@@ -521,7 +522,7 @@ function startGame(selectedMap) {
                 showFallVFX(player, 3000); // Show VFX for 1 second
                 applyImpactFrames(player, otherPlayer, platforms, context, 100) 
                 screenShake(20, 200);
-                // player.lives -= 3;
+                player.lives -= 1;
     
                 // Delay the resetPlayer call to allow the effect to show
                 setTimeout(() => {
@@ -693,7 +694,7 @@ function startGame(selectedMap) {
         player.velocityY = 0;
         player.percentage = 0;
         player.ultimateCharge = 0;
-        player.ultimateReady = true;
+        player.ultimateReady = false;
         player.iFrames = true; // Add invincibility on respawn
         player.disableControls = false;
     
