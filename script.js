@@ -26,6 +26,7 @@ let player1 = {
     velocityY: 0,
     weight: 10,
     comboHits: 0,
+    lastHitTime: 0,
     comboCooldown: false,
     isFalling: false,
     iFrames: false,
@@ -62,6 +63,7 @@ let player2 = {
     velocityY: 0,
     weight: 10,
     comboHits: 0,
+    lastHitTime: 0,
     comboCooldown: false,
     isFalling: false,
     iFrames: false,
@@ -109,7 +111,7 @@ const maps = {
     map1: [
         { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
         { x: 0.3, y: 0.68, width: 0.4, height: 0.02, allowDropThrough: true },
-        { maxDistanceThreshold: 3000, minZoom: 0.5, maxZoom: 1.5 },
+        { maxDistanceThreshold: 3000, minZoom: 0.3, maxZoom: 1.2 },
         { backgroundImage: 'images/BackgroundImages/vicente-nitti-glacialmountains-pfv.jpg', speed: 0.1, x: 0, y: 0}
     ],
     map2: [
@@ -391,6 +393,7 @@ function updateCamera(camera, players, canvas, selectedMap) {
     let maxDistanceThreshold = 3000;
     let minZoom = 0.5;
     let maxZoom = 1.5;
+    let maxHeight = 800; // Maximum height the camera can go
 
     // Update camera settings based on the selected map
     const mapSettings = maps[selectedMap];
@@ -400,23 +403,41 @@ function updateCamera(camera, players, canvas, selectedMap) {
             maxDistanceThreshold = settings.maxDistanceThreshold;
             minZoom = settings.minZoom;
             maxZoom = settings.maxZoom;
+            maxHeight = settings.maxHeight || maxHeight; // Use map-specific max height if available
         }
+    }
 
-        const targetZoom = maxZoom - (maxDistance / maxDistanceThreshold) * (maxZoom - minZoom);
+    const targetZoom = maxZoom - (maxDistance / maxDistanceThreshold) * (maxZoom - minZoom);
 
-        // Smoothly transition camera position
-        if (!FixedCamera) {
-            camera.x = lerp(camera.x, midpoint.x, 0.1);
-            camera.y = lerp(camera.y, midpoint.y, 0.1);
-            camera.zoom = lerp(camera.zoom, Math.max(minZoom, Math.min(maxZoom, targetZoom)), 0.1);
-        } else {
-            camera.x = cameraFixedPostions.x * 2;
-            camera.y = cameraFixedPostions.y * 2;
-            camera.zoom = 1;
-        }
+    // Smoothly transition camera position
+    if (!FixedCamera) {
+        camera.x = lerp(camera.x, midpoint.x, 0.1);
+        camera.y = lerp(camera.y, Math.min(midpoint.y, maxHeight), 0.1); // Limit camera height
+        camera.zoom = lerp(camera.zoom, Math.max(minZoom, Math.min(maxZoom, targetZoom)), 0.1);
+    } else {
+        camera.x = cameraFixedPostions.x * 2;
+        camera.y = cameraFixedPostions.y * 2;
+        camera.zoom = 1;
     }
 }
 
+function drawArrows(context, camera, players, canvas, maxHeight) {
+    players.forEach(player => {
+        if (player.y < maxHeight) {
+            const arrowX = (player.x - camera.x) * camera.zoom + canvas.width / 2;
+            const arrowY = 10; // Position the arrow at the top of the canvas
+
+            // Draw the arrow
+            context.fillStyle = 'red';
+            context.beginPath();
+            context.moveTo(arrowX, arrowY);
+            context.lineTo(arrowX - 10, arrowY + 20);
+            context.lineTo(arrowX + 10, arrowY + 20);
+            context.closePath();
+            context.fill();
+        }
+    });
+}
 
 function startGame(selectedMap) {
     // Use the selected map data
@@ -444,6 +465,7 @@ function startGame(selectedMap) {
         updateBackground(selectedMap);
 
         updateCamera(camera, [player1, player2], gameCanvas, selectedMap);
+        drawArrows(context, camera, [player1, player2], gameCanvas, 200);
         
         drawPlatforms();
         updatePlayer(player1);
@@ -452,6 +474,9 @@ function startGame(selectedMap) {
         drawPlayer(context, player2);
         drawUI();
         checkGameOver();
+
+        drawComboHits(context, player1, camera, gameCanvas);
+        drawComboHits(context, player2, camera, gameCanvas);
         
         requestAnimationFrame(gameLoop);
     }
@@ -585,7 +610,7 @@ function startGame(selectedMap) {
 
     function checkPlatformCollision(player) {
         player.onGround = false;
-        const dampingFactor = 0.8; // Adjust this value to control the speed decrease with each bounce
+        const baseDampingFactor = 0.8; // Base damping factor
     
         platforms.forEach(platform => {
             if (player.x < platform.x + platform.width &&
@@ -594,23 +619,37 @@ function startGame(selectedMap) {
                 if (player.y + player.height >= platform.y &&
                     player.y < platform.y) {
                     if (player.knockbackActive) {
+                        player.y = platform.y - player.height;
+                        player.bounceCount = (player.bounceCount || 0) + 1; // Increment bounce count
+                        const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
+                        player.y = platform.y - player.height;
                         player.velocityY = -Math.abs(player.velocityY) / dampingFactor; // Bounce off the platform with reduced speed
+                        createSmokeVfx(player, "bottom", 100);
                     } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the platform
                         player.y = platform.y - player.height;
                         player.velocityY = 0;
                         player.onGround = true;
+                        player.bounceCount = 0; // Reset bounce count when player lands
                     }
                 }
                 // Check if the player is touching the bottom of the platform
                 if (player.knockbackActive && player.y <= platform.y + platform.height &&
                     player.y + player.height > platform.y + platform.height &&
                     player.velocityY < 0) { // Ensure the player is moving upwards
-                    player.y = platform.y + platform.height;
-                    player.velocityY = Math.abs(player.velocityY) * dampingFactor; // Bounce off the platform with reduced speed
+                    player.bounceCount = (player.bounceCount || 0) + 1; // Increment bounce count
+                    const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
+                    player.velocityY = Math.abs(player.velocityY) / dampingFactor; // Bounce off the platform with reduced speed
+                    createSmokeVfx(player, "top", 100);
                 }
             }
         });
+    
+        // Ensure the player doesn't bounce if not colliding with any platform
+        if (!player.onGround && !player.knockbackActive) {
+            player.bounceCount = 0;
+        }
     }
+    
     
     
 
@@ -710,16 +749,25 @@ function startGame(selectedMap) {
 
     // Update useMelee function to include scaled knockback
     function useMelee(player) {
-        if (player.comboCooldown) return;
-
+        // if (player.comboCooldown) return;
+    
         const opponent = player === player1 ? player2 : player1;
         const hitboxColor = player.character === 1 ? 'lightblue' : 'pink';
-        const hitboxOffset = player.character === 1 ? 50 : -50;
-
+    
+        // Define the hitbox with slightly larger dimensions
+        const hitbox = {
+            x: player.x - 10, // Adjust x position to center the hitbox
+            y: player.y - 10, // Adjust y position to center the hitbox
+            width: player.width + 20, // Increase width by 20 pixels
+            height: player.height + 20 // Increase height by 20 pixels
+        };
+    
+        // Draw the hitbox for debugging purposes
         context.fillStyle = hitboxColor;
-        context.fillRect(player.x + hitboxOffset, player.y, 50, 50);
-
-        if (checkHit(player, opponent) && !opponent.iFrames) {
+        context.fillRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
+    
+        // Check for collision with the opponent
+        if (checkHit(hitbox, opponent) && !opponent.iFrames) {
             applyDamage(opponent, 10);
             showHitVFX(opponent);
             screenShake(3, 500);
@@ -727,16 +775,69 @@ function startGame(selectedMap) {
             opponent.ultimateCharge += 10;
             // Scale knockback based on percentage
             applyKnockback(player, opponent);
+    
+            // Update last hit time
+            player.lastHitTime = Date.now();
+            player.comboHits += 1;
         }
+    
+        // player.comboHits += 1;
+        // if (player.comboHits >= 4) {
+        //     player.comboCooldown = true;
+        //     setTimeout(() => {
+        //         player.comboHits = 0;
+        //         player.comboCooldown = false;
+        //     }, 1000);
+        // }
+    }
 
-        player.comboHits += 1;
-        if (player.comboHits >= 4) {
-            player.comboCooldown = true;
-            setTimeout(() => {
-                player.comboHits = 0;
-                player.comboCooldown = false;
-            }, 1000);
+    function drawComboHits(context, player, camera, canvas) {
+        const currentTime = Date.now();
+        const timeSinceLastHit = currentTime - player.lastHitTime;
+        const fadeDuration = 2000; // Duration in milliseconds before the combo hits fade out
+        let rotationAngle = 0;
+    
+        // Calculate opacity based on time since last hit
+        let opacity = 1;
+        if (timeSinceLastHit > fadeDuration) {
+            opacity = 0;
+            player.comboHits = 0; // Reset comboHits when the combo fades all the way
+        } else {
+            opacity = 1 - (timeSinceLastHit / fadeDuration);
         }
+    
+        // Calculate screen position relative to the camera
+        const screenX = (player.x - camera.x) * camera.zoom + canvas.width / 2;
+        const screenY = (player.y - camera.y) * camera.zoom + canvas.height / 2;
+    
+        // Calculate color based on combo hits
+        const ratio = Math.min(timeSinceLastHit / 500, 1000);
+        const redValue = 255;
+        const greenValue = Math.floor(255 * ratio);
+        const blueValue = Math.floor(255 * ratio);
+        const color = `rgba(${redValue}, ${greenValue}, ${blueValue}, ${opacity})`;
+    
+        // Generate a random angle between -45 and 45 degrees
+        if (!rotationAngle || timeSinceLastHit > fadeDuration) {
+            rotationAngle = (Math.random() * 4 - 2) * (Math.PI / 180);
+        }
+    
+        // Save the current context state
+        context.save();
+    
+        // Apply the rotation
+        context.translate(screenX, screenY - 50);
+        context.rotate(rotationAngle);
+        context.translate(-screenX, -screenY + 50);
+    
+        // Draw the combo hits with calculated color and opacity
+        context.fillStyle = color;
+        context.font = '20px Arial';
+        context.textAlign = 'center'; // Center align the text
+        context.fillText(`Combo: ${player.comboHits}`, screenX + 20, screenY - 50);
+    
+        // Restore the context to its original state
+        context.restore();
     }
 
     function applyDamage(player, amount) {
@@ -747,6 +848,8 @@ function startGame(selectedMap) {
         const knockback = opponent.percentage * 0.001;
         const attackStrength = player.attackStrength || 1; // Default attack strength if not defined
         const opponentWeight = opponent.weight || 1; // Default weight if not defined
+
+        const knockbackForce = (knockback * attackStrength / opponentWeight) * 0.1; // Adjust the multiplier as needed
     
         opponent.velocityX = (opponent.x - player.x) * knockback;
         opponent.velocityY = -5 * (opponent.x - player.x) * knockback;
@@ -754,11 +857,11 @@ function startGame(selectedMap) {
         opponent.disableControls = true;
     
         // Calculate knockback time based on knockback, attack strength, and opponent weight
-        opponent.knockbackTime = (knockback * attackStrength / opponentWeight) * 500000; // Convert to milliseconds
+        opponent.knockbackTime = (knockbackForce * 500000); // Convert to milliseconds
     
         // Manage knockback time
         if (opponent.knockbackTime > 0) {
-            console.log(opponent.knockbackTime)
+            //createCubeTrail(opponent)
             setTimeout(() => {
                 opponent.knockbackFriction = true;
                 opponent.knockbackActive = false;
@@ -766,7 +869,6 @@ function startGame(selectedMap) {
             }, opponent.knockbackTime);
         }
     }
-
 
     function checkHit(attacker, defender) {
         return attacker.x < defender.x + defender.width &&
@@ -779,8 +881,8 @@ function startGame(selectedMap) {
         // Adjust position based on the camera
         const adjustedX = (player.x - camera.x) * camera.zoom + gameCanvas.width / 2;
         const adjustedY = (player.y - camera.y) * camera.zoom + gameCanvas.height / 2;
-        const adjustedWidth = player.width * camera.zoom;
-        const adjustedHeight = player.height * camera.zoom;
+        const adjustedWidth = player.width * camera.zoom + 20;
+        const adjustedHeight = player.height * camera.zoom + 20;
     
         context.strokeStyle = 'red';
         context.strokeRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
@@ -1023,6 +1125,7 @@ function startGame(selectedMap) {
     
                 let laserProgress = 0;
                 let laserOpacity = 1;
+                let hitDetected = false;
     
                 screenShake(30, 300);
                 applyImpactFrames(player, opponent, platforms, context, 200);
@@ -1050,17 +1153,20 @@ function startGame(selectedMap) {
                     vfxContext.lineTo(x2, y2);
                     vfxContext.stroke();
     
+                    // Check for hit during the laser animation
+                    if (!hitDetected && checkHitLaser(currentX, currentY, opponent)) {
+                        hitDetected = true;
+                        applyDamage(opponent, 30); // Higher damage for ultimate
+                        showHitVFX(opponent);
+                        screenShake(5, 500);
+                        player.ignoreCollisions = false;
+                        opponent.ignoreCollisions = false;
+                        applyKnockback(player, opponent);
+                    }
+    
                     if (laserProgress < 1) {
                         requestAnimationFrame(animateLaser);
                     } else {
-                        // Check for hit when the laser progress is finished
-                        if (checkHitLaser(x2, y2, opponent)) {
-                            applyDamage(opponent, 30); // Higher damage for ultimate
-                            showHitVFX(opponent);
-                            screenShake(5, 500);
-                            applyKnockback(player, opponent);
-                        }
-    
                         // Start fading out the laser
                         const fadeDuration = 500; // Duration of the fade out
                         const fadeStep = 0.02; // Step for each frame
@@ -1100,11 +1206,13 @@ function startGame(selectedMap) {
     }
     
     function checkHitLaser(laserX, laserY, opponent) {
-        return laserX > opponent.x && laserX < opponent.x + opponent.width &&
-               laserY > opponent.y && laserY < opponent.y + opponent.height;
+        return (
+            laserX >= opponent.x &&
+            laserX <= opponent.x + opponent.width &&
+            laserY >= opponent.y &&
+            laserY <= opponent.y + opponent.height
+        );
     }
-    
-    
 
     function playCutscene(player, opponent) {
         console.log("Playing cutscene for player:", player);
@@ -1149,9 +1257,11 @@ function startGame(selectedMap) {
                                     // applyImpactFrames(player, opponent, platforms, 100, 50);
                                     screenShake(30, 200);
                                     fireworkHitVfx(opponent, 100, 500);
+                                    applyDamage(opponent, 110); // Higher damage for ultimate
+                                    showHitVFX(opponent);
                                     opponent.ignoreGravity = false;
-                                    opponent.velocityY = -5;
-                                    opponent.velocityX = (opponent.x - player.x) / 3
+                                    applyKnockback(player, opponent);
+
                                     setTimeout(() => {
                                         vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
                                         player.disableControls = false;
@@ -1218,13 +1328,13 @@ function startGame(selectedMap) {
                 beam.progress += 0.05; // Adjust the speed of the effect
                 beam.opacity = 1.1 - beam.progress;
     
-                const x = playerX + playerWidth / 2 + Math.cos(beam.angle) * beam.progress * effectBeamLength;
-                const y = playerY + playerHeight / 2 + Math.sin(beam.angle) * beam.progress * effectBeamLength;
+                const x = (playerX + playerWidth / 2 + Math.cos(beam.angle) * beam.progress * effectBeamLength - camera.x) * camera.zoom + vfxCanvas.width / 2;
+                const y = (playerY + playerHeight / 2 + Math.sin(beam.angle) * beam.progress * effectBeamLength - camera.y) * camera.zoom + vfxCanvas.height / 2;
     
                 vfxContext.strokeStyle = beam.color;
                 vfxContext.globalAlpha = beam.opacity;
                 vfxContext.beginPath();
-                vfxContext.moveTo(playerX + playerWidth / 2, playerY + playerHeight / 2);
+                vfxContext.moveTo((playerX + playerWidth / 2 - camera.x) * camera.zoom + vfxCanvas.width / 2, (playerY + playerHeight / 2 - camera.y) * camera.zoom + vfxCanvas.height / 2);
                 vfxContext.lineTo(x, y);
                 vfxContext.stroke();
             });
@@ -1240,6 +1350,89 @@ function startGame(selectedMap) {
     
         requestAnimationFrame(animateEffects);
     }
+
+    function createSmokeVfx(player, position = 'top', duration = 1000) {
+        const particleCount = 20; // Number of smoke particles
+        const particles = [];
+    
+        // Create smoke particles
+        for (let i = 0; i < particleCount; i++) {
+            let x, y, velocityX, velocityY;
+            switch (position) {
+                case 'top':
+                    x = player.x + Math.random() * player.width;
+                    y = player.y;
+                    velocityX = Math.random() * 2 - 1;
+                    velocityY = -Math.abs(Math.random() * 2); // Move upwards
+                    break;
+                case 'bottom':
+                    x = player.x + Math.random() * player.width;
+                    y = player.y + player.height;
+                    velocityX = Math.random() * 2 - 1;
+                    velocityY = Math.abs(Math.random() * 2); // Move upwards
+                    break;
+                case 'left':
+                    x = player.x;
+                    y = player.y + Math.random() * player.height;
+                    velocityX = -Math.abs(Math.random() * 2); // Move right
+                    velocityY = Math.random() * 2 - 1;
+                    break;
+                case 'right':
+                    x = player.x + player.width;
+                    y = player.y + Math.random() * player.height;
+                    velocityX = Math.abs(Math.random() * 2); // Move left
+                    velocityY = Math.random() * 2 - 1;
+                    break;
+                default:
+                    x = player.x + Math.random() * player.width;
+                    y = player.y + Math.random() * player.height;
+                    velocityX = Math.random() * 2 - 1;
+                    velocityY = Math.random() * 2 - 1;
+            }
+    
+            particles.push({
+                x: x,
+                y: y,
+                velocityX: velocityX,
+                velocityY: velocityY,
+                alpha: 1, // Initial opacity
+                size: Math.random() * 5 + 5 // Randomize particle size
+            });
+        }
+    
+        function animateSmoke(timestamp) {
+            vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+    
+            particles.forEach(particle => {
+                particle.x += particle.velocityX;
+                particle.y += particle.velocityY;
+                particle.alpha -= 0.01; // Fade out particles
+    
+                const screenX = (particle.x - camera.x) * camera.zoom + vfxCanvas.width / 2;
+                const screenY = (particle.y - camera.y) * camera.zoom + vfxCanvas.height / 2;
+    
+                if (particle.alpha > 0) {
+                    vfxContext.globalAlpha = particle.alpha;
+                    vfxContext.fillStyle = 'rgba(225, 225, 225, ' + particle.alpha + ')';
+                    vfxContext.beginPath();
+                    vfxContext.arc(screenX, screenY, particle.size * camera.zoom, 0, Math.PI * 2);
+                    vfxContext.fill();
+                }
+            });
+    
+            if (particles.some(particle => particle.alpha > 0)) {
+                requestAnimationFrame(animateSmoke);
+            } else {
+                vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                vfxContext.globalAlpha = 1; // Reset globalAlpha after clearing
+                console.log("Clearing smoke VFX for player:", player);
+            }
+        }
+    
+        requestAnimationFrame(animateSmoke);
+    }
+    
+    
     
 
     if (!gameLoopRunning) {
