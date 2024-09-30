@@ -251,7 +251,7 @@ function updatePlayerPreview(player, characterId) {
     const nameId = `player${player}-name`;
     const ultimateId = `player${player}-ultimateName`;
     const ultimateDescriptionId = `player${player}-ultimate-description`;
-    const abilityId = `player${player}-ability`;
+    const abilityId = `player${player}-abilityName`;
     const abilityDescriptionId = `player${player}-ability-description`;
 
     // Update player preview
@@ -504,7 +504,6 @@ function startGame(selectedMap) {
     }
 
     function updatePlayer(player) {
-        // console.log(maps[selectedMap])
         // Apply gravity
         if (!player.ignoreGravity) {
             player.velocityY += gravity;
@@ -634,6 +633,7 @@ function startGame(selectedMap) {
         player.onGround = false;
         const baseDampingFactor = 0.8; // Base damping factor
     
+        // Check collision with platforms
         platforms.forEach(platform => {
             if (player.x < platform.x + platform.width &&
                 player.x + player.width > platform.x) {
@@ -644,7 +644,6 @@ function startGame(selectedMap) {
                         player.y = platform.y - player.height;
                         player.bounceCount = (player.bounceCount || 0) + 1; // Increment bounce count
                         const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
-                        player.y = platform.y - player.height;
                         player.velocityY = -Math.abs(player.velocityY) / dampingFactor; // Bounce off the platform with reduced speed
                         createSmokeVfx(player, "bottom", 50);
                     } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the platform
@@ -666,11 +665,45 @@ function startGame(selectedMap) {
             }
         });
     
-        // Ensure the player doesn't bounce if not colliding with any platform
+        // Check collision with other players only if not bouncing
+        if (!player.knockbackActive) {
+            const otherPlayer = player === player1 ? player2 : player1;
+            if (player.x < otherPlayer.x + otherPlayer.width &&
+                player.x + player.width > otherPlayer.x) {
+                // Check if the player is touching the top of the other player
+                if (player.y + player.height >= otherPlayer.y &&
+                    player.y < otherPlayer.y) {
+                    if (player.knockbackActive) {
+                        player.y = otherPlayer.y - player.height;
+                        player.bounceCount = (player.bounceCount || 0) + 1; // Increment bounce count
+                        const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
+                        player.velocityY = -Math.abs(player.velocityY) / dampingFactor; // Bounce off the other player with reduced speed
+                        createSmokeVfx(player, "bottom", 50);
+                    } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the other player
+                        player.y = otherPlayer.y - player.height;
+                        player.velocityY = 0;
+                        player.onGround = true;
+                        player.bounceCount = 0; // Reset bounce count when player lands
+                    }
+                }
+                // Check if the player is touching the bottom of the other player
+                if (player.knockbackActive && player.y <= otherPlayer.y + otherPlayer.height &&
+                    player.y + player.height > otherPlayer.y + otherPlayer.height &&
+                    player.velocityY < 0) { // Ensure the player is moving upwards
+                    player.bounceCount = (player.bounceCount || 0) + 1; // Increment bounce count
+                    const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
+                    player.velocityY = Math.abs(player.velocityY) / dampingFactor; // Bounce off the other player with reduced speed
+                    createSmokeVfx(player, "top", 50);
+                }
+            }
+        }
+    
+        // Ensure the player doesn't bounce if not colliding with any platform or player
         if (!player.onGround && !player.knockbackActive) {
             player.bounceCount = 0;
         }
     }
+    
 
     function drawUI() {
         context.fillStyle = 'white';
@@ -743,13 +776,23 @@ function startGame(selectedMap) {
     function useUltimate(player) {
         if (player.ultimateReady) {
             const opponent = player === player1 ? player2 : player1;
+
+            const hitbox = {
+                x: player.x - 10, // Adjust x position to center the hitbox
+                y: player.y - 10, // Adjust y position to center the hitbox
+                width: player.width + 50, // Increase width by 20 pixels
+                height: player.height + 50 // Increase height by 20 pixels
+            };
     
             switch (player.character) {
                 case 1: // Red Fury's Ultimate
-                    context.fillStyle = 'maroon';
-                    context.fillRect(player.x + 50, player.y, 100, 100); // Larger hitbox for ultimate
-                    if (checkHit(player, opponent) && !opponent.iFrames) {
+                context.fillStyle = "red";
+                context.fillRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
+                    if (checkHit(hitbox, opponent)) {
                         playCutscene(player, opponent);
+                    } else {
+                        player.ultimateReady = false
+                        player.ultimateCharge = 0;
                     }
                     break;
                 case 2: // Blue Blast's Ultimate
@@ -966,6 +1009,11 @@ function startGame(selectedMap) {
             opponent.ultimateCharge += 10;
             // Scale knockback based on percentage
             applyKnockback(player, opponent);
+
+            opponent.disableControls = true;
+            setTimeout(() => {
+                opponent.disableControls = false;
+            }, 1000); // Adjust the stun duration as needed
     
             // Update last hit time
             player.lastHitTime = Date.now();
@@ -1085,9 +1133,9 @@ function startGame(selectedMap) {
             useUltimate(player1);
         } else if (key === player2.controls.ultimate && player2.ultimateReady) {
             useUltimate(player2);
-        } else if (key === player1.controls.melee) {
+        } else if (key === player1.controls.melee && !player1.disableControls) {
             useMelee(player1);
-        } else if (key === player2.controls.melee) {
+        } else if (key === player2.controls.melee && !player2.disableControls) {
             useMelee(player2);
         } else if (key === player1.controls.ability && player1.abilityCooldown == 0) {
             useAbility(player1);
@@ -1412,9 +1460,13 @@ function startGame(selectedMap) {
     
         // Example cutscene logic
         let cutsceneDuration = 3000; // 3 seconds
-
-    
+        
+        const settings = maps[selectedMap].find(item => item.maxDistanceThreshold !== undefined);
+        const DefaultZoom = settings.minZoom
+        
         // Freeze players during cutscene
+        player.velocityX = 0
+        opponent.velocityX = 0
         player.disableControls = true;
         opponent.disableControls = true;
         console.log(player.character);
@@ -1434,7 +1486,8 @@ function startGame(selectedMap) {
                     setTimeout(() => {              
                         vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
                         player.velocityY = -24;
-                        setTimeout(() => {      
+                        settings.minZoom = 2
+                        setTimeout(() => {
                             player.velocityY = 0;
                             player.ignoreGravity = true;
                             setTimeout(() => {      
@@ -1451,22 +1504,10 @@ function startGame(selectedMap) {
                                     // applyImpactFrames(player, opponent, platforms, 100, 50);
                                     screenShake(30, 200);
                                     fireworkHitVfx(opponent, 100, 500);
-                                    applyDamage(opponent, 110); // Higher damage for ultimate
+                                    applyDamage(opponent, 50); // Higher damage for ultimate
                                     showHitVFX(opponent);
                                     opponent.ignoreGravity = false;
                                     applyKnockback(player, opponent);
-
-                                    setTimeout(() => {
-                                        vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-                                        player.disableControls = false;
-                                        opponent.disableControls = false;
-                                        player.ignoreGravity = false;    
-                                        opponent.ignoreGravity = false;
-                                        opponent.velocityX = 0;
-                                        // Reset globalCompositeOperation to default
-                                        // vfxContext.globalCompositeOperation = 'source-over';
-                                        console.log("Cutscene ended for player:", player);
-                                    }, 200);
                                 }, 1000);
                             }, 200);
                         }, 300);
@@ -1481,6 +1522,7 @@ function startGame(selectedMap) {
     
         setTimeout(() => {
             vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+            settings.minZoom = DefaultZoom
             player.disableControls = false;
             opponent.disableControls = false;
             player.ignoreGravity = false;    
