@@ -1,4 +1,5 @@
 let player1 = {
+    playerId: 'player1',
     x: 650,
     y: 400,
     width: 50,
@@ -9,8 +10,9 @@ let player1 = {
         left: 'A',
         down: 'S',
         right: 'D',
-        ultimate: 'Q',
-        melee: 'E'
+        melee: 'E',
+        ability: 'R',
+        ultimate: 'Q'
     },
     percentage: 0,
     knockbackTime: 0,
@@ -19,7 +21,8 @@ let player1 = {
     ultimateReady: false,
     character: 0, // Will be updated based on selected character
     ultimateName: '', // Will be updated based on selected character
-    meleeName: '', // Will be updated based on selected character
+    abilityName: '', // Will be updated based on selected character
+    abilityCooldown: 0,
     lives: 3,
     onGround: false,
     velocityX: 0,
@@ -37,6 +40,7 @@ let player1 = {
 };
 
 let player2 = {
+    playerId: 'player2',
     x: 650,
     y: 400,
     width: 50,
@@ -47,8 +51,9 @@ let player2 = {
         left: 'J',
         down: 'K',
         right: 'L',
-        ultimate: 'U',
-        melee: 'O'
+        melee: 'U',
+        ability: 'Y',
+        ultimate: 'P'
     },
     percentage: 0,
     knockbackTime: 0,
@@ -56,7 +61,8 @@ let player2 = {
     ultimateReady: false,
     character: 0, // Will be updated based on selected character
     ultimateName: '', // Will be updated based on selected character
-    meleeName: '', // Will be updated based on selected character
+    abilityName: '', // Will be updated based on selected character
+    abilityCooldown: 0,
     lives: 3,
     onGround: false,
     velocityX: 0,
@@ -190,9 +196,9 @@ const characters = [
         name: 'Red Guy',
         color: 'rgb(159, 13, 15)',
         ultimateName: 'Red Fury',
-        ultimateDescription: 'A furious red attack.',
-        abilityName: 'Uppercut',
-        abilityDescription: 'A strong upward punch.'
+        ultimateDescription: 'A closed ranged move that does a furious red attack.',
+        abilityName: 'Repel',
+        abilityDescription: 'A strong upward burst that pushes other players away.'
     },
     {
         id: 2,
@@ -200,8 +206,8 @@ const characters = [
         color: 'rgb(1, 55, 250)',
         ultimateName: 'Blue Blast',
         ultimateDescription: 'A powerful blast of blue energy.',
-        abilityName: 'Downslam',
-        abilityDescription: 'A powerful downward slam.'
+        abilityName: 'Blue Shot',
+        abilityDescription: 'A quick shot that shoots in the last dirrection the player was moving.'
     },
     // Add more characters here
 ];
@@ -284,14 +290,14 @@ document.querySelectorAll('.character').forEach(button => {
             player1.color = character.color;
             player1.character = character.id;
             player1.ultimateName = character.ultimateName;
-            player1.meleeName = character.abilityName;
+            player1.abilityName = character.abilityName;
             document.getElementById('player1-selection').classList.add('hidden');
             document.getElementById('player2-selection').classList.remove('hidden');
         } else {
             player2.color = character.color;
             player2.character = character.id;
             player2.ultimateName = character.ultimateName;
-            player2.meleeName = character.abilityName;
+            player2.abilityName = character.abilityName;
 
             // Check if both players have the same character and adjust Player 2's color
             if (player1.character === player2.character) {
@@ -498,7 +504,7 @@ function startGame(selectedMap) {
     }
 
     function updatePlayer(player) {
-        
+        // console.log(maps[selectedMap])
         // Apply gravity
         if (!player.ignoreGravity) {
             player.velocityY += gravity;
@@ -640,7 +646,7 @@ function startGame(selectedMap) {
                         const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
                         player.y = platform.y - player.height;
                         player.velocityY = -Math.abs(player.velocityY) / dampingFactor; // Bounce off the platform with reduced speed
-                        createSmokeVfx(player, "bottom", 100);
+                        createSmokeVfx(player, "bottom", 50);
                     } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the platform
                         player.y = platform.y - player.height;
                         player.velocityY = 0;
@@ -655,7 +661,7 @@ function startGame(selectedMap) {
                     player.bounceCount = (player.bounceCount || 0) + 1; // Increment bounce count
                     const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
                     player.velocityY = Math.abs(player.velocityY) / dampingFactor; // Bounce off the platform with reduced speed
-                    createSmokeVfx(player, "top", 100);
+                    createSmokeVfx(player, "top", 50);
                 }
             }
         });
@@ -665,9 +671,6 @@ function startGame(selectedMap) {
             player.bounceCount = 0;
         }
     }
-    
-    
-    
 
     function drawUI() {
         context.fillStyle = 'white';
@@ -762,7 +765,179 @@ function startGame(selectedMap) {
         }
     }
     
-
+    function useAbility(player) {
+        if (player.abilityCooldown == 0) {
+            // Detect the opponent
+            const opponent = player === player1 ? player2 : player1;
+    
+            const screenX = (player.x - camera.x) * camera.zoom + gameCanvas.width / 2;
+            const screenY = (player.y - camera.y) * camera.zoom + gameCanvas.width / 2;
+    
+            // Display the ability name above the player's head and fade it out
+            let alpha = 1.0;
+            const fadeOutText = () => {
+                vfxContext.clearRect(screenX - 50, screenY - 50, 100, 20); // Clear previous text
+                vfxContext.fillStyle = `rgba(${player.color.r}, ${player.color.g}, ${player.color.b}, ${alpha})`;
+                vfxContext.font = '16px Arial';
+                vfxContext.fillText(player.abilityName, screenX, screenY - 30);
+                alpha -= 0.02;
+                if (alpha > 0) {
+                    requestAnimationFrame(fadeOutText);
+                }
+            };
+            fadeOutText();
+    
+            switch (player.abilityName) {
+                case "Repel":
+                    // Create a burst effect that grows and fades
+                    const chargeRadius = 60; // Updated chargeRadius
+                    const startX = player.x + player.width / 2;
+                    const startY = player.y + player.height / 2;
+    
+                    let chargeProgress = 0;
+                    let hasHitOpponent = false; // Flag to track if the opponent has been hit
+    
+                    function animateCharge(timestamp) {
+                        vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+    
+                        player.velocityY = -gravity; // Hover in the air
+                        player.velocityX = 0;
+    
+                        chargeProgress += 0.02; // Adjust the speed of the charge-up
+                        const currentRadius = chargeRadius + chargeProgress * 50;
+    
+                        const x = (startX - camera.x) * camera.zoom + vfxCanvas.width / 2;
+                        const y = (startY - camera.y) * camera.zoom + vfxCanvas.height / 2;
+    
+                        vfxContext.fillStyle = player.color;
+                        vfxContext.globalAlpha = 1.0 - chargeProgress; // Fading effect
+                        vfxContext.beginPath();
+                        vfxContext.arc(x, y, currentRadius * camera.zoom, 0, 2 * Math.PI);
+                        vfxContext.fill();
+    
+                        if (chargeProgress < 1) {
+                            requestAnimationFrame(animateCharge);
+                        } else {
+                            // Clear the charge-up effect
+                            vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                        }
+                    }
+                    requestAnimationFrame(animateCharge);
+    
+                    // Detect if the opponent is touching the burst effect
+                    const repelInterval = setInterval(() => {
+                        const burstX = (player.x + player.width / 2 - camera.x) * camera.zoom + vfxCanvas.width / 2;
+                        const burstY = (player.y + player.height / 2 - camera.y) * camera.zoom + vfxCanvas.height / 2;
+    
+                        // vfxContext.fillStyle = 'red';
+                        // vfxContext.fillRect(burstX - 50 * camera.zoom, burstY - 50 * camera.zoom, 100 * camera.zoom, 100 * camera.zoom); // Centered larger hitbox
+    
+                        const opponentX = (opponent.x + opponent.width / 2 - camera.x) * camera.zoom + vfxCanvas.width / 2;
+                        const opponentY = (opponent.y + opponent.height / 2 - camera.y) * camera.zoom + vfxCanvas.height / 2;
+                        const distance = Math.sqrt(Math.pow(opponentX - burstX, 2) + Math.pow(opponentY - burstY, 2));
+    
+                        if (distance < 90 * camera.zoom + opponent.width / 2 && !opponent.iFrames && !hasHitOpponent) { // 50 is half of the hitbox size
+                            applyDamage(opponent, 1);
+                            applyKnockback(player, opponent);
+                            hasHitOpponent = true; // Set the flag to true after hitting the opponent
+                        }
+                    }, 30);
+    
+                    // Clear the larger hitbox and stop checking for collisions after a short duration
+                    setTimeout(() => {
+                        vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                        clearInterval(repelInterval);
+                    }, 500); // Adjust the duration as needed
+    
+                    player.abilityCooldown = 1; // Set to desired cooldown value
+                    break;
+                case "Blue Shot":
+                    // Determine the player's last direction
+                    let lastDirection = { x: 0, y: 0 };
+                    if (player.velocityX > 0) lastDirection.x = 1;
+                    else if (player.velocityX < 0) lastDirection.x = -1;
+                    if (player.velocityY > 0) lastDirection.y = 1;
+                    else if (player.velocityY < 0) lastDirection.y = -1;
+    
+                    // Set a default direction if the player isn't moving
+                    if (lastDirection.x === 0 && lastDirection.y === 0) {
+                        lastDirection = { x: 1, y: 0 }; // Default to moving right
+                    }
+    
+                    // Shoot a bullet in the direction the player was last moving
+                    const bulletSpeed = 10;
+                    const bullet = {
+                        x: player.x + player.width / 2,
+                        y: player.y + player.height / 2,
+                        vx: lastDirection.x * bulletSpeed,
+                        vy: lastDirection.y * bulletSpeed,
+                        radius: 5,
+                        color: 'blue'
+                    };
+    
+                    function animateBullet() {
+                        vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                        bullet.x += bullet.vx;
+                        bullet.y += bullet.vy;
+    
+                        const bulletScreenX = (bullet.x - camera.x) * camera.zoom + vfxCanvas.width / 2;
+                        const bulletScreenY = (bullet.y - camera.y) * camera.zoom + vfxCanvas.height / 2;
+    
+                        vfxContext.fillStyle = bullet.color;
+                        vfxContext.beginPath();
+                        vfxContext.arc(bulletScreenX, bulletScreenY, bullet.radius * camera.zoom, 0, 2 * Math.PI);
+                        vfxContext.fill();
+    
+                        if (bullet.x < 0 || bullet.x > vfxCanvas.width || bullet.y < 0 || bullet.y > vfxCanvas.height) {
+                            vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height); // Clear the bullet
+                            return; // Stop animation if bullet goes out of bounds
+                        }
+    
+                        // Check if the bullet hits the opponent
+                        const opponentX = (opponent.x + opponent.width / 2 - camera.x) * camera.zoom + vfxCanvas.width / 2;
+                        const opponentY = (opponent.y + opponent.height / 2 - camera.y) * camera.zoom + vfxCanvas.height / 2;
+                        const distance = Math.sqrt(Math.pow(opponentX - bulletScreenX, 2) + Math.pow(opponentY - bulletScreenY, 2));
+    
+                        if (distance < bullet.radius * camera.zoom + opponent.width / 2 && !opponent.iFrames) {
+                            applyDamage(opponent, 1);
+                            applyKnockback(player, opponent);
+                            vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height); // Clear the bullet
+                            return; // Stop animation if bullet hits the opponent
+                        }
+    
+                        requestAnimationFrame(animateBullet);
+                    }
+                    requestAnimationFrame(animateBullet);
+    
+                    player.abilityCooldown = 5; // Set to desired cooldown value
+                    break;
+                // Add more cases for additional characters
+                default:
+                    console.log('Unknown character ability');
+            }
+    
+            const cooldownElement = document.getElementById(`${player.playerId}-ability-key`);
+            if (cooldownElement) {
+                cooldownElement.innerText = `Cooldown: ${player.abilityCooldown}`;
+            } else {
+                console.error(`Element with ID ${player.playerId}-ability-key not found.`);
+            }
+    
+            // Countdown the cooldown
+            const cooldownInterval = setInterval(() => {
+                player.abilityCooldown -= 1;
+                if (cooldownElement) {
+                    if (player.abilityCooldown > 0) {
+                        cooldownElement.innerText = `Cooldown: ${player.abilityCooldown}`;
+                    } else {
+                        cooldownElement.innerText = player.controls.ability;
+                        clearInterval(cooldownInterval);
+                    }
+                }
+            }, 1000);
+        }
+    }
+    
     // Update useMelee function to include scaled knockback
     function useMelee(player) {
         // if (player.comboCooldown) return;
@@ -914,6 +1089,10 @@ function startGame(selectedMap) {
             useMelee(player1);
         } else if (key === player2.controls.melee) {
             useMelee(player2);
+        } else if (key === player1.controls.ability && player1.abilityCooldown == 0) {
+            useAbility(player1);
+        } else if (key === player2.controls.ability && player2.abilityCooldown == 0) {
+            useAbility(player2);
         }
         handleMovement(key, player1);
         handleMovement(key, player2);
@@ -1035,15 +1214,12 @@ function startGame(selectedMap) {
         if (playerX < 0) {
             startX = 0;
             startY = playerY + playerHeight / 2;
-            console.log("bottom");
         } else if (playerX + playerWidth > gameCanvas.width) {
             startX = gameCanvas.width;
             startY = playerY + playerHeight / 2;
-            console.log("left");
         } else {
             startX = playerX + playerWidth / 2;
             startY = playerY + playerHeight / 2;
-            console.log("bottom");
         }
     
         const beamsData = [];
@@ -1089,6 +1265,7 @@ function startGame(selectedMap) {
     function shootLaserBeam(player, opponent) {
         // Make the player jump up in the air and hover
         player.velocityY = -20;
+        
         player.ignoreCollisions = true;
         setTimeout(() => {
             player.ignoreCollisions = true;
@@ -1235,6 +1412,7 @@ function startGame(selectedMap) {
     
         // Example cutscene logic
         let cutsceneDuration = 3000; // 3 seconds
+
     
         // Freeze players during cutscene
         player.disableControls = true;
@@ -1441,7 +1619,6 @@ function startGame(selectedMap) {
             } else {
                 vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
                 vfxContext.globalAlpha = 1; // Reset globalAlpha after clearing
-                console.log("Clearing smoke VFX for player:", player);
             }
         }
     
@@ -1482,14 +1659,10 @@ function screenShake(intensity, duration) {
 
 document.getElementById('player1-controls').addEventListener('input', (event) => {
     const controls = event.target.value.toUpperCase().split('');
-    player1.controls = { up: controls[0], left: controls[1], down: controls[2], right: controls[3], ultimate: player1.controls.ultimate, melee: player1.controls.melee };
+    player1.controls = { up: controls[0], left: controls[1], down: controls[2], right: controls[3], melee: player1.controls.melee, ability: player1.controls.ability, ultimate: player1.controls.ultimate };
     document.getElementById('player1-ultimate-key').textContent = player1.controls.ultimate;
     document.getElementById('player1-melee-key').textContent = player1.controls.melee;
-});
-
-document.getElementById('player1-ultimate').addEventListener('input', (event) => {
-    player1.controls.ultimate = event.target.value.toUpperCase();
-    document.getElementById('player1-ultimate-key').textContent = player1.controls.ultimate;
+    document.getElementById('player1-ability-key').textContent = player1.controls.ability;
 });
 
 document.getElementById('player1-melee').addEventListener('input', (event) => {
@@ -1497,19 +1670,35 @@ document.getElementById('player1-melee').addEventListener('input', (event) => {
     document.getElementById('player1-melee-key').textContent = player1.controls.melee;
 });
 
-document.getElementById('player2-controls').addEventListener('input', (event) => {
-    const controls = event.target.value.toUpperCase().split('');
-    player2.controls = { up: controls[0], left: controls[1], down: controls[2], right: controls[3], ultimate: player2.controls.ultimate, melee: player2.controls.melee };
-    document.getElementById('player2-ultimate-key').textContent = player2.controls.ultimate;
-    document.getElementById('player2-melee-key').textContent = player2.controls.melee;
+document.getElementById('player1-ability').addEventListener('input', (event) => {
+    player1.controls.ability = event.target.value.toUpperCase();
+    document.getElementById('player1-ability-key').textContent = player1.controls.ability;
 });
 
-document.getElementById('player2-ultimate').addEventListener('input', (event) => {
-    player2.controls.ultimate = event.target.value.toUpperCase();
+document.getElementById('player1-ultimate').addEventListener('input', (event) => {
+    player1.controls.ultimate = event.target.value.toUpperCase();
+    document.getElementById('player1-ultimate-key').textContent = player1.controls.ultimate;
+});
+
+document.getElementById('player2-controls').addEventListener('input', (event) => {
+    const controls = event.target.value.toUpperCase().split('');
+    player2.controls = { up: controls[0], left: controls[1], down: controls[2], right: controls[3], melee: player2.controls.melee, ability: player2.controls.ability, ultimate: player2.controls.ultimate };
     document.getElementById('player2-ultimate-key').textContent = player2.controls.ultimate;
+    document.getElementById('player2-melee-key').textContent = player2.controls.melee;
+    document.getElementById('player2-ability-key').textContent = player2.controls.ability;
 });
 
 document.getElementById('player2-melee').addEventListener('input', (event) => {
     player2.controls.melee = event.target.value.toUpperCase();
     document.getElementById('player2-melee-key').textContent = player2.controls.melee;
+});
+
+document.getElementById('player2-ability').addEventListener('input', (event) => {
+    player2.controls.melee = ability.target.value.toUpperCase();
+    document.getElementById('player2-ability-key').textContent = player2.controls.ability;
+});
+
+document.getElementById('player2-ultimate').addEventListener('input', (event) => {
+    player2.controls.ultimate = event.target.value.toUpperCase();
+    document.getElementById('player2-ultimate-key').textContent = player2.controls.ultimate;
 });
