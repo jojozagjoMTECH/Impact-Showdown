@@ -745,7 +745,7 @@ function startGame(selectedMap) {
         player.velocityY = 0;
         player.percentage = 0;
         player.ultimateCharge = 0;
-        player.ultimateReady = false;
+        player.ultimateReady = true;
         player.iFrames = true; // Add invincibility on respawn
         player.disableControls = false;
     
@@ -1087,20 +1087,30 @@ function startGame(selectedMap) {
         const knockback = opponent.percentage * 0.001;
         const attackStrength = player.attackStrength || 1; // Default attack strength if not defined
         const opponentWeight = opponent.weight || 1; // Default weight if not defined
-
-        const knockbackForce = (knockback * attackStrength / opponentWeight) * 0.1; // Adjust the multiplier as needed
     
-        opponent.velocityX = (opponent.x - player.x) * knockback;
-        opponent.velocityY = -5 * (opponent.x - player.x) * knockback;
+        const knockbackForce = (knockback * attackStrength / opponentWeight) * 1000; // Adjust the multiplier as needed
+    
+        // Calculate the direction vector from player to opponent
+        const directionX = opponent.x - player.x;
+        const directionY = opponent.y - player.y;
+    
+        // Normalize the direction vector
+        const magnitude = Math.sqrt(directionX * directionX + directionY * directionY);
+        const normalizedDirectionX = directionX / magnitude;
+        const normalizedDirectionY = directionY / magnitude;
+    
+        // Apply knockback in the opposite direction
+        opponent.velocityX = normalizedDirectionX * knockbackForce;
+        opponent.velocityY = (normalizedDirectionY * knockbackForce) - knockbackForce;
+        console.log(normalizedDirectionX * knockbackForce, normalizedDirectionY * knockbackForce)
         opponent.knockbackActive = true;
         opponent.disableControls = true;
     
         // Calculate knockback time based on knockback, attack strength, and opponent weight
-        opponent.knockbackTime = (knockbackForce * 500000); // Convert to milliseconds
+        opponent.knockbackTime = knockbackForce * 30; // Convert to milliseconds
     
         // Manage knockback time
         if (opponent.knockbackTime > 0) {
-            //createCubeTrail(opponent)
             setTimeout(() => {
                 opponent.knockbackFriction = true;
                 opponent.knockbackActive = false;
@@ -1108,6 +1118,7 @@ function startGame(selectedMap) {
             }, opponent.knockbackTime);
         }
     }
+    
 
     function checkHit(attacker, defender) {
         return attacker.x < defender.x + defender.width &&
@@ -1402,7 +1413,7 @@ function startGame(selectedMap) {
                         screenShake(5, 500);
                         player.ignoreCollisions = false;
                         opponent.ignoreCollisions = false;
-                        applyKnockback(player, opponent);
+                        applyKnockback([currentX, currentY], opponent);
                     }
     
                     if (laserProgress < 1) {
