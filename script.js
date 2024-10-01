@@ -1101,7 +1101,7 @@ function startGame(selectedMap) {
     
         // Apply knockback in the opposite direction
         opponent.velocityX = normalizedDirectionX * knockbackForce;
-        opponent.velocityY = (normalizedDirectionY * knockbackForce) - knockbackForce;
+        opponent.velocityY = (normalizedDirectionY * knockbackForce) + knockbackForce;
         console.log(normalizedDirectionX * knockbackForce, normalizedDirectionY * knockbackForce)
         opponent.knockbackActive = true;
         opponent.disableControls = true;
@@ -1413,7 +1413,7 @@ function startGame(selectedMap) {
                         screenShake(5, 500);
                         player.ignoreCollisions = false;
                         opponent.ignoreCollisions = false;
-                        applyKnockback([currentX, currentY], opponent);
+                        applyKnockback(player, opponent);
                     }
     
                     if (laserProgress < 1) {
