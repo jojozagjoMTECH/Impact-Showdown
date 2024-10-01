@@ -2,4 +2,4 @@
 create a 2 player fighting game using css html and javascript could you make me create a advanced main menu with settings and when the player clicks play it takes them to a character selection screen with mutiple characters and when both players have selected there character it takes them to a map selection screen with multiple maps and when both players are spawn they have friction movement, percentage and ultimate bars that charage up as you damage the other player as the percentage goes and the knockback of the player goes up tell they get knocked off the platform. make the selection screen easy to understand and the character selection so player 1 selects their character then player two show who each character is with different colors. make the player movement smooth and have diffrent obsticals for each map. make it so the players can change there movement controls in the settings the default are wasd for player 1 and ijkl for player two.
 
 Todo List:
--Fix blue ultimate knockback
+-Countdown for battle

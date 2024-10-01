@@ -85,6 +85,69 @@ const camera = {
     zoom: 1
 };
 
+class AudioManager {
+    constructor() {
+        this.backgroundMusic = {
+            MainMenu: new Audio('Sounds/BackgroundMusic/Impact Showdown.mp3'),
+            BattleTheme: new Audio('Sounds/BackgroundMusic/Impact Showdown Fight.mp3'),
+        };
+        this.backgroundMusic.MainMenu.loop = true;
+        this.backgroundMusic.MainMenu.volume = 0.5;
+
+        this.sounds = {
+            // bassDrop: new Audio('Sounds/SoundEffects/ES_Deep Low - Epidemic Sound.mp3'),
+            CinematicBoom: new Audio('Sounds/SoundEffects/Cinematic Boom.mp3'),
+            FinalHit: new Audio('Sounds/SoundEffects/Final Hit.mp3'),
+
+            FallOff: new Audio('Sounds/SoundEffects/Sci-Fi Explosion.mp3'),
+            // jump: new Audio('path/to/your/jump-sound.mp3'),
+            // hit: new Audio('path/to/your/hit-sound.mp3'),
+            // Add more sounds as needed
+        };
+
+        this.hitSounds = [];
+        for (let i = 1; i <= 5; i++) {
+            this.hitSounds.push(new Audio(`Sounds/SoundEffects/HitSounds/${i}.mp3`));
+        }
+    }
+
+    playBackgroundMusic(name) {
+        if (this.backgroundMusic[name]) {
+            console.log(this.backgroundMusic[name])
+            this.backgroundMusic[name].currentTime = 0;
+            this.backgroundMusic[name].play();
+        }
+    }
+
+    stopBackgroundMusic(name) {
+        if (this.backgroundMusic[name]) {
+            this.backgroundMusic[name].pause();
+            this.backgroundMusic[name].currentTime = 0;
+        }
+    }
+
+    playSound(name) {
+        if (this.sounds[name]) {
+            this.sounds[name].currentTime = 0;
+            this.sounds[name].play();
+        }
+    }
+
+    playRandomHitSound() {
+        const randomIndex = Math.floor(Math.random() * this.hitSounds.length);
+        const randomHitSound = this.hitSounds[randomIndex];
+        randomHitSound.currentTime = 0;
+        randomHitSound.play();
+    }
+}
+
+// // Usage
+const audioManager = new AudioManager();
+
+// // Play sound effects
+// audioManager.playSound('jump');
+// audioManager.playSound('hit');
+
 let gameLoopRunning = false;
 const gravity = 0.5;
 const friction = 0.9;
@@ -215,6 +278,12 @@ const characters = [
 let showHitboxes = false;
 let showImpactFrames = true;
 let FixedCamera = false;
+
+document.getElementById('start-button').addEventListener('click', () => {
+    document.getElementById('intro-animation').classList.add('hidden');
+    document.getElementById('main-menu').classList.remove('hidden');
+    audioManager.playBackgroundMusic("MainMenu");
+});
 
 document.getElementById('play-button').addEventListener('click', () => {
     document.getElementById('main-menu').classList.add('hidden');
@@ -471,6 +540,7 @@ function startGame(selectedMap) {
     const scaledMap = scaleMapData(maps[selectedMap], gameCanvas);
     platforms = scaledMap;
 
+    audioManager.stopBackgroundMusic('MainMenu');
 
     resetPlayer(player1);
     resetPlayer(player2);
@@ -501,6 +571,47 @@ function startGame(selectedMap) {
         drawComboHits(context, player2, camera, gameCanvas);
         
         requestAnimationFrame(gameLoop);
+    }
+
+    startCountdown(player1, player2);
+
+    function drawCountdown(text) {
+        vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+        vfxContext.font = 'bold 200px Arial';
+        vfxContext.fillStyle = 'white';
+        vfxContext.strokeStyle = 'black';
+        vfxContext.lineWidth = 5;
+        vfxContext.textAlign = 'center';
+        vfxContext.textBaseline = 'middle';
+        vfxContext.fillText(text, vfxCanvas.width / 2, vfxCanvas.height / 2);
+        vfxContext.strokeText(text, vfxCanvas.width / 2, vfxCanvas.height / 2);
+    }
+    
+    function startCountdown(player1, player2) {
+        let countdownNumber = 3;
+    
+        // Disable player controls
+        player1.disableControls = true;
+        player2.disableControls = true;
+    
+        const countdownInterval = setInterval(() => {
+            if (countdownNumber > 0) {
+                drawCountdown(countdownNumber);
+                audioManager.playSound('CinematicBoom');
+            } else if (countdownNumber === 0) {
+                audioManager.playSound('FinalHit');
+                audioManager.playBackgroundMusic('BattleTheme');
+                drawCountdown('IMPACT!');
+            } else {
+                clearInterval(countdownInterval);
+                vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                // Enable player controls
+                player1.disableControls = false;
+                player2.disableControls = false;
+                // Start the game or transition to the next screen here
+            }
+            countdownNumber--;
+        }, 1000);
     }
 
     function updatePlayer(player) {
@@ -745,7 +856,7 @@ function startGame(selectedMap) {
         player.velocityY = 0;
         player.percentage = 0;
         player.ultimateCharge = 0;
-        player.ultimateReady = true;
+        player.ultimateReady = false;
         player.iFrames = true; // Add invincibility on respawn
         player.disableControls = false;
     
@@ -756,6 +867,8 @@ function startGame(selectedMap) {
     }
 
     function resetGame() {
+        audioManager.stopBackgroundMusic('BattleTheme');
+        audioManager.playBackgroundMusic("MainMenu");
         player1.lives = 3;
         player2.lives = 3;
         resetPlayer(player1);
@@ -803,8 +916,8 @@ function startGame(selectedMap) {
                     console.log('Unknown character ultimate');
             }
     
-            // player.ultimateCharge = 0;
-            // player.ultimateReady = false;
+            player.ultimateCharge = 0;
+            player.ultimateReady = false;
         }
     }
     
@@ -1002,13 +1115,14 @@ function startGame(selectedMap) {
     
         // Check for collision with the opponent
         if (checkHit(hitbox, opponent) && !opponent.iFrames) {
+            audioManager.playRandomHitSound();
             applyDamage(opponent, 10);
             showHitVFX(opponent);
             screenShake(3, 500);
             player.ultimateCharge += 5;
             opponent.ultimateCharge += 10;
             // Scale knockback based on percentage
-            applyKnockback(player, opponent);
+            applyKnockback(player, opponent, 800);//less knockback
 
             opponent.disableControls = true;
             setTimeout(() => {
@@ -1083,12 +1197,12 @@ function startGame(selectedMap) {
         player.percentage += amount;
     }
 
-    function applyKnockback(player, opponent) {
+    function applyKnockback(player, opponent, multiplier = 1000) {
         const knockback = opponent.percentage * 0.001;
         const attackStrength = player.attackStrength || 1; // Default attack strength if not defined
         const opponentWeight = opponent.weight || 1; // Default weight if not defined
     
-        const knockbackForce = (knockback * attackStrength / opponentWeight) * 1000; // Adjust the multiplier as needed
+        const knockbackForce = (knockback * attackStrength / opponentWeight) * multiplier; // Adjust the multiplier as needed
     
         // Calculate the direction vector from player to opponent
         const directionX = opponent.x - player.x;
@@ -1257,6 +1371,7 @@ function startGame(selectedMap) {
     
     function showFallVFX(player, duration = 1000) {
         console.log("Showing fall VFX for player:", player);
+        audioManager.playSound('FallOff');
     
         const colors = ['red', 'blue', 'green', 'yellow', 'purple'];
         const beams = 20;
@@ -1511,6 +1626,7 @@ function startGame(selectedMap) {
                                 vfxContext.fillStyle = 'red';
                                 vfxContext.font = '50px Arial';
                                 vfxContext.fillText('Red Fury', vfxCanvas.width / 2 - 100, vfxCanvas.height / 2);
+                                audioManager.playSound('bassDrop');
                                 setTimeout(() => {
                                     // applyImpactFrames(player, opponent, platforms, 100, 50);
                                     screenShake(30, 200);

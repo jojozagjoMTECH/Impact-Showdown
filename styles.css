@@ -15,11 +15,27 @@ body {
     display: flex;
 }
 
-#main-menu, #settings-menu, #character-selection, #map-selection, #game {
+#main-menu, #settings-menu, #character-selection, #map-selection, #game, #intro-animation {
     position: absolute;
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
+}
+
+#intro-animation {
+    width: 100%;
+    height: 100%;
+    background-image: url("images/Logos/LogoLandscape.png");
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+#start-button {
+    position: absolute;
+    bottom: 200px;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: darkblue;
 }
 
 /* #main-menu button {
