@@ -6,6 +6,7 @@
     <title>Impact Showdown</title>
     <link rel="stylesheet" href="styles.css">
     <link rel="icon" type="image/x-icon" href="images/Logos/LogoBackground-removebg-preview.png">
+    <link rel="stylesheet" href="https://use.typekit.net/ubp3qmp.css">
 </head>
 <body>
     <div id="intro-animation">
@@ -45,11 +46,11 @@
         <button id="back-button">Back</button>
     </div>
 
-    <div id="character-selection" class="hidden">
+    <div id="character-selection"  class="hidden">
         <h2>Character Selection</h2>
         <div id="player1-selection">
             <h3>Player 1</h3>
-            <div id="player1-preview" class="player-preview hidden">
+            <div id="player1-preview" class="player-preview animated-text hidden">
                 <canvas id="player1-canvas" width="50" height="50"></canvas>
                 <p>Name: <span id="player1-name"></span></p>
                 <p>Ultimate: <span id="player1-ultimateName"></span></p>
@@ -72,7 +73,7 @@
             </div>
             <button class="character" data-player="2" data-character="1">Character 1</button>
             <button class="character" data-player="2" data-character="2">Character 2</button>
-        </div>
+        </div id="animated-text">
     </div>
        
     <div id="map-selection" class="hidden">

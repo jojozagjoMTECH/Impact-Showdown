@@ -93,11 +93,14 @@ class AudioManager {
         };
         this.backgroundMusic.MainMenu.loop = true;
         this.backgroundMusic.MainMenu.volume = 0.5;
+        this.backgroundMusic.BattleTheme.loop = true;
+        this.backgroundMusic.BattleTheme.volume = 0.5;
 
         this.sounds = {
             // bassDrop: new Audio('Sounds/SoundEffects/ES_Deep Low - Epidemic Sound.mp3'),
-            CinematicBoom: new Audio('Sounds/SoundEffects/Cinematic Boom.mp3'),
+            CinematicBoom: new Audio('Sounds/SoundEffects/Cinematic Boom2.mp3'),
             FinalHit: new Audio('Sounds/SoundEffects/Final Hit.mp3'),
+            RedFury: new Audio("Sounds/SoundEffects/Red Fury.mp3"),
 
             FallOff: new Audio('Sounds/SoundEffects/Sci-Fi Explosion.mp3'),
             // jump: new Audio('path/to/your/jump-sound.mp3'),
@@ -115,6 +118,18 @@ class AudioManager {
         if (this.backgroundMusic[name]) {
             console.log(this.backgroundMusic[name])
             this.backgroundMusic[name].currentTime = 0;
+            this.backgroundMusic[name].play();
+        }
+    }
+
+    PauseBackgroundMusic(name) {
+        if (this.backgroundMusic[name]) {
+            this.backgroundMusic[name].pause();
+        }
+    }
+
+    ResumeBackgroundMusic(name) {
+        if (this.backgroundMusic[name]) {
             this.backgroundMusic[name].play();
         }
     }
@@ -282,22 +297,26 @@ let FixedCamera = false;
 document.getElementById('start-button').addEventListener('click', () => {
     document.getElementById('intro-animation').classList.add('hidden');
     document.getElementById('main-menu').classList.remove('hidden');
+    document.getElementById('main-menu').classList.add('flex');
     audioManager.playBackgroundMusic("MainMenu");
 });
 
 document.getElementById('play-button').addEventListener('click', () => {
     document.getElementById('main-menu').classList.add('hidden');
+    document.getElementById('main-menu').classList.remove('flex');
     document.getElementById('character-selection').classList.remove('hidden');
 });
 
 document.getElementById('settings-button').addEventListener('click', () => {
     document.getElementById('main-menu').classList.add('hidden');
+    document.getElementById('main-menu').classList.remove('flex');
     document.getElementById('settings-menu').classList.remove('hidden');
 });
 
 document.getElementById('back-button').addEventListener('click', () => {
     document.getElementById('settings-menu').classList.add('hidden');
     document.getElementById('main-menu').classList.remove('hidden');
+    document.getElementById('main-menu').classList.add('flex');
 });
 
 document.getElementById('toggle-hitboxes').addEventListener('change', (event) => {
@@ -757,6 +776,7 @@ function startGame(selectedMap) {
                         const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
                         player.velocityY = -Math.abs(player.velocityY) / dampingFactor; // Bounce off the platform with reduced speed
                         createSmokeVfx(player, "bottom", 50);
+                        audioManager.playRandomHitSound();
                     } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the platform
                         player.y = platform.y - player.height;
                         player.velocityY = 0;
@@ -772,6 +792,7 @@ function startGame(selectedMap) {
                     const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
                     player.velocityY = Math.abs(player.velocityY) / dampingFactor; // Bounce off the platform with reduced speed
                     createSmokeVfx(player, "top", 50);
+                    audioManager.playRandomHitSound();
                 }
             }
         });
@@ -1598,6 +1619,8 @@ function startGame(selectedMap) {
         console.log(player.character);
         
         if (player.character === 1) {
+            audioManager.PauseBackgroundMusic("BattleTheme")
+            audioManager.playSound('RedFury');
             cutsceneDuration = 3500;
             opponent.velocityY = -25;
             setTimeout(() => {              
@@ -1626,7 +1649,7 @@ function startGame(selectedMap) {
                                 vfxContext.fillStyle = 'red';
                                 vfxContext.font = '50px Arial';
                                 vfxContext.fillText('Red Fury', vfxCanvas.width / 2 - 100, vfxCanvas.height / 2);
-                                audioManager.playSound('bassDrop');
+                                audioManager.playSound('CinematicBoom');
                                 setTimeout(() => {
                                     // applyImpactFrames(player, opponent, platforms, 100, 50);
                                     screenShake(30, 200);
@@ -1658,6 +1681,7 @@ function startGame(selectedMap) {
             // Reset globalCompositeOperation to default
             vfxContext.globalCompositeOperation = 'source-over';
             console.log("Cutscene ended for player:", player);
+            audioManager.ResumeBackgroundMusic("BattleTheme")
         }, cutsceneDuration);
     }
     

@@ -1,3 +1,9 @@
+* {
+    font-family: "ethnocentric", sans-serif;
+    font-weight: 400;
+    font-style: normal;
+}
+
 body {
     font-family: Arial, sans-serif;
     text-align: center;
@@ -15,7 +21,7 @@ body {
     display: flex;
 }
 
-#main-menu, #settings-menu, #character-selection, #map-selection, #game, #intro-animation {
+#settings-menu, #character-selection, #map-selection, #game, #intro-animation {
     position: absolute;
     top: 50%;
     left: 50%;
@@ -34,19 +40,68 @@ body {
     position: absolute;
     bottom: 200px;
     left: 50%;
-    transform: translateX(-50%);
+    transform: translate(-50%, -50%);
     background-color: darkblue;
 }
 
-/* #main-menu button {
+#main-menu {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 100%;
+    height: 100%;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column; /* Add this line */
+    background-color: rgb(42, 43, 43);
 
-} */
+    background: linear-gradient(270deg, #292929 25%, #696969 50%, #292929 75%);
+    background-size: 600% 600%;
+    animation: gradient 15s ease infinite;
+}
 
 #menuLogo {
     display: flex;
-    width: 100;
+    position: relative;
     height: 700px;
+    pointer-events: none;
+    top: 0%;
     margin-bottom: -200px;
+}
+
+#play-button {
+    border: none;
+    color: white;
+    background-color: #1b93d8;
+    text-decoration: none;
+    font-size: 50px;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: background-color 0.3s, transform 0.3s;
+    padding: 35px 300px;
+    margin-bottom: 30px;
+  }
+
+#play-button:hover {
+    background-color: #c71f1f;
+}
+
+#settings-button {
+    border: none;
+    color: white;
+    background-color: #818181;
+    text-align: center;
+    text-decoration: none;
+    font-size: 50px;
+    cursor: pointer;
+    border-radius: 12px;
+    transition: background-color 0.3s, transform 0.3s;
+    padding: 30px 200px;
+}
+
+#settings-button:hover {
+    background-color: #595c59;
 }
 
 #settings-menu {
@@ -78,21 +133,6 @@ body {
     color: blue;
 }
 
-#settings-menu button {
-    background-color: #4CAF50;
-    border: none;
-    color: white;
-    padding: 10px 20px;
-    text-align: center;
-    text-decoration: none;
-    display: inline-block;
-    font-size: 16px;
-    margin: 10px 5px;
-    cursor: pointer;
-    border-radius: 5px;
-    transition: background-color 0.3s, transform 0.3s;
-}
-
 #settings-menu button:hover {
     background-color: #45a049;
     transform: scale(1.05);
@@ -104,15 +144,34 @@ body {
 }
 
 #character-selection {
-    background-color: rgba(0, 0, 0, 0.4);
+    background-color: rgba(173, 173, 173, 0.4);
     padding: 20px;
+    margin-bottom: 100px;
     border-radius: 10px;
     box-shadow: 0 4px 8px rgba(0, 1, 0, 1);
+    width: 80%; /* Set a fixed width */
+    max-width: 600px; /* Set a maximum width */
+    margin: 0 auto; /* Center the element */
 }
 
 .player-preview {
     margin-top: 10px;
     text-align: left;
+    margin-bottom: 30px;
+    padding: 20px;
+    border-radius: 20px;
+    width: 100%; /* Ensure it takes the full width of the parent */
+    box-sizing: border-box; /* Include padding in the width calculation */
+}
+
+.typing-effect {
+    font-family: "ethnocentric", sans-serif;
+    font-weight: 700;
+    font-style: normal;
+    font-size: 2em;
+    color: white;
+    text-align: center;
+    margin-top: 20%;
 }
 
 #player1-canvas, #player2-canvas, #map-preview canvas {
@@ -205,4 +264,16 @@ button:active {
 #winner-screen button {
     padding: 10px 20px;
     font-size: 16px;
+}
+
+@keyframes gradient {
+    0% {
+        background-position: 0% 50%;
+    }
+    50% {
+        background-position: 100% 50%;
+    }
+    100% {
+        background-position: 0% 50%;
+    }
 }
