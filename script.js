@@ -214,7 +214,7 @@ const maps = {
         { x: 0.1, y: 0.68, width: 0.1, height: 0.02, allowDropThrough: true },
         { x: 0.8, y: 0.68, width: 0.1, height: 0.02, allowDropThrough: true },
         { maxDistanceThreshold: 2500, minZoom: 0.6, maxZoom: 1.4 },
-        { backgroundImage: 'images/BackgroundImages/mountainsDay.webp', speed: 0.1,  x: 0, y: 0}
+        { backgroundImage: 'images/BackgroundImages/mountainsFar.jpg', speed: 0.1,  x: 0, y: 0}
     ],
     map3: [
         { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
