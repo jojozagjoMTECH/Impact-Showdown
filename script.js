@@ -100,7 +100,6 @@ class AudioManager {
             // bassDrop: new Audio('Sounds/SoundEffects/ES_Deep Low - Epidemic Sound.mp3'),
             CinematicBoom: new Audio('Sounds/SoundEffects/Cinematic Boom2.mp3'),
             FinalHit: new Audio('Sounds/SoundEffects/Final Hit.mp3'),
-            RedFury: new Audio("Sounds/SoundEffects/Red Fury.mp3"),
 
             FallOff: new Audio('Sounds/SoundEffects/Sci-Fi Explosion.mp3'),
             // jump: new Audio('path/to/your/jump-sound.mp3'),
@@ -164,7 +163,7 @@ const audioManager = new AudioManager();
 // audioManager.playSound('hit');
 
 let gameLoopRunning = false;
-const gravity = 0.5;
+const gravity = 0.4;
 const friction = 0.9;
 const gameCanvas = document.getElementById('game-canvas');
 const context = gameCanvas.getContext('2d');
@@ -596,7 +595,7 @@ function startGame(selectedMap) {
 
     function drawCountdown(text) {
         vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-        vfxContext.font = 'bold 200px Arial';
+        vfxContext.font = 'bold 200px ethnocentric';
         vfxContext.fillStyle = 'white';
         vfxContext.strokeStyle = 'black';
         vfxContext.lineWidth = 5;
@@ -798,37 +797,38 @@ function startGame(selectedMap) {
         });
     
         // Check collision with other players only if not bouncing
-        if (!player.knockbackActive) {
-            const otherPlayer = player === player1 ? player2 : player1;
-            if (player.x < otherPlayer.x + otherPlayer.width &&
-                player.x + player.width > otherPlayer.x) {
-                // Check if the player is touching the top of the other player
-                if (player.y + player.height >= otherPlayer.y &&
-                    player.y < otherPlayer.y) {
-                    if (player.knockbackActive) {
-                        player.y = otherPlayer.y - player.height;
-                        player.bounceCount = (player.bounceCount || 0) + 1; // Increment bounce count
-                        const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
-                        player.velocityY = -Math.abs(player.velocityY) / dampingFactor; // Bounce off the other player with reduced speed
-                        createSmokeVfx(player, "bottom", 50);
-                    } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the other player
-                        player.y = otherPlayer.y - player.height;
-                        player.velocityY = 0;
-                        player.onGround = true;
-                        player.bounceCount = 0; // Reset bounce count when player lands
-                    }
-                }
-                // Check if the player is touching the bottom of the other player
-                if (player.knockbackActive && player.y <= otherPlayer.y + otherPlayer.height &&
-                    player.y + player.height > otherPlayer.y + otherPlayer.height &&
-                    player.velocityY < 0) { // Ensure the player is moving upwards
-                    player.bounceCount = (player.bounceCount || 0) + 1; // Increment bounce count
-                    const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
-                    player.velocityY = Math.abs(player.velocityY) / dampingFactor; // Bounce off the other player with reduced speed
-                    createSmokeVfx(player, "top", 50);
-                }
-            }
-        }
+        
+        // if (!player.knockbackActive) {
+        //     const otherPlayer = player === player1 ? player2 : player1;
+        //     if (player.x < otherPlayer.x + otherPlayer.width &&
+        //         player.x + player.width > otherPlayer.x) {
+        //         // Check if the player is touching the top of the other player
+        //         if (player.y + player.height >= otherPlayer.y &&
+        //             player.y < otherPlayer.y) {
+        //             if (player.knockbackActive) {
+        //                 player.y = otherPlayer.y - player.height;
+        //                 player.bounceCount = (player.bounceCount || 0) + 1; // Increment bounce count
+        //                 const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
+        //                 player.velocityY = -Math.abs(player.velocityY) / dampingFactor; // Bounce off the other player with reduced speed
+        //                 createSmokeVfx(player, "bottom", 50);
+        //             } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the other player
+        //                 player.y = otherPlayer.y - player.height;
+        //                 player.velocityY = 0;
+        //                 player.onGround = true;
+        //                 player.bounceCount = 0; // Reset bounce count when player lands
+        //             }
+        //         }
+        //         // Check if the player is touching the bottom of the other player
+        //         if (player.knockbackActive && player.y <= otherPlayer.y + otherPlayer.height &&
+        //             player.y + player.height > otherPlayer.y + otherPlayer.height &&
+        //             player.velocityY < 0) { // Ensure the player is moving upwards
+        //             player.bounceCount = (player.bounceCount || 0) + 1; // Increment bounce count
+        //             const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
+        //             player.velocityY = Math.abs(player.velocityY) / dampingFactor; // Bounce off the other player with reduced speed
+        //             createSmokeVfx(player, "top", 50);
+        //         }
+        //     }
+        // }
     
         // Ensure the player doesn't bounce if not colliding with any platform or player
         if (!player.onGround && !player.knockbackActive) {
@@ -898,6 +898,7 @@ function startGame(selectedMap) {
         // Hide the game screen and character selection screen, show the main menu
         document.getElementById('game').classList.add('hidden');
         document.getElementById('main-menu').classList.remove('hidden');
+        document.getElementById('main-menu').classList.add('flex');
         document.getElementById('character-selection').classList.add('hidden');
         document.getElementById('map-selection').classList.add('hidden');
         document.getElementById('map-selection').classList.remove('flex');
@@ -1620,7 +1621,7 @@ function startGame(selectedMap) {
         
         if (player.character === 1) {
             audioManager.PauseBackgroundMusic("BattleTheme")
-            audioManager.playSound('RedFury');
+
             cutsceneDuration = 3500;
             opponent.velocityY = -25;
             setTimeout(() => {              
