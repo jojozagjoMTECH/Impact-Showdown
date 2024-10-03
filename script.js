@@ -902,7 +902,7 @@ function startGame(selectedMap) {
         player.velocityY = 0;
         player.percentage = 0;
         player.ultimateCharge = 0;
-        player.ultimateReady = true;
+        player.ultimateReady = false;
         player.iFrames = true; // Add invincibility on respawn
         player.disableControls = false;
 
