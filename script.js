@@ -88,13 +88,17 @@ const camera = {
 class AudioManager {
     constructor() {
         this.backgroundMusic = {
-            MainMenu: new Audio('Sounds/BackgroundMusic/Impact Showdown.mp3'),
-            BattleTheme: new Audio('Sounds/BackgroundMusic/Impact Showdown Fight.mp3'),
+            MainMenu: new Audio('Sounds/MenuMusic.mp3'),
         };
         this.backgroundMusic.MainMenu.loop = true;
         this.backgroundMusic.MainMenu.volume = 0.5;
-        this.backgroundMusic.BattleTheme.loop = true;
-        this.backgroundMusic.BattleTheme.volume = 0.5;
+
+        this.BattleMusic = {
+            BattleTheme1: new Audio('Sounds/BackgroundMusic/Impact Showdown Fight1.mp3'),
+            BattleTheme2: new Audio('Sounds/BackgroundMusic/Impact Showdown Fight2.mp3'),
+            BattleTheme3: new Audio('Sounds/BackgroundMusic/Impact Showdown Fight3.mp3'),
+            BattleTheme4: new Audio('Sounds/BackgroundMusic/Impact Showdown Fight4.mp3'),
+        };
 
         this.sounds = {
             // bassDrop: new Audio('Sounds/SoundEffects/ES_Deep Low - Epidemic Sound.mp3'),
@@ -109,7 +113,7 @@ class AudioManager {
 
         this.hitSounds = [];
         for (let i = 1; i <= 5; i++) {
-            this.hitSounds.push(new Audio(`Sounds/SoundEffects/HitSounds/${i}.mp3`));
+            this.hitSounds.push(new Audio(`Sounds/HitSounds/${i}.mp3`));
         }
     }
 
@@ -152,6 +156,14 @@ class AudioManager {
         const randomHitSound = this.hitSounds[randomIndex];
         randomHitSound.currentTime = 0;
         randomHitSound.play();
+    }
+
+    getRandomBackgroundMusic() {
+        const backgroundMusicArray = Object.values(this.BattleMusic);
+        const randomIndex = Math.floor(Math.random() * backgroundMusicArray.length);
+        const randomBackgroundMusic = backgroundMusicArray[randomIndex];
+        randomBackgroundMusic.currentTime = 0;
+        return randomBackgroundMusic;
     }
 }
 
@@ -560,12 +572,21 @@ function startGame(selectedMap) {
 
     audioManager.stopBackgroundMusic('MainMenu');
 
+    const BattleMusic = audioManager.getRandomBackgroundMusic();
+    BattleMusic.loop = true;
+    BattleMusic.volume = 0.5;
+
     resetPlayer(player1);
     resetPlayer(player2);
     vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
     bgContext.clearRect(0, 0, bgCanvas.width, bgCanvas.height);
 
     loadBackgroundImage(selectedMap);
+
+    function sleep(ms) {
+        return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
     function gameLoop() {
         // updateCanvasSize(camera, gameCanvas);
         // updateCanvasSize(camera, vfxCanvas);
@@ -618,7 +639,7 @@ function startGame(selectedMap) {
                 audioManager.playSound('CinematicBoom');
             } else if (countdownNumber === 0) {
                 audioManager.playSound('FinalHit');
-                audioManager.playBackgroundMusic('BattleTheme');
+                BattleMusic.play()
                 drawCountdown('IMPACT!');
             } else {
                 clearInterval(countdownInterval);
@@ -675,7 +696,7 @@ function startGame(selectedMap) {
     
                 // Delay the resetPlayer call to allow the effect to show
                 setTimeout(() => {
-                    resetPlayer(player);
+                    resetPlayer(player, true);
                     player.isFalling = false; // Reset the falling flag
                     player.visible = true; // Show the player again
                     player.disableControls = false;
@@ -859,8 +880,8 @@ function startGame(selectedMap) {
         resetGame();
     });
 
-    function resetPlayer(player) {
-        const respawnHeight = 1000; // Adjust this value to change the respawn height
+    function resetPlayer(player, Middle = false) {
+        const respawnHeight = -300; // Adjust this value to change the respawn height
     
         console.log("Resetting player:", player);
         if (player === player1) {
@@ -870,25 +891,32 @@ function startGame(selectedMap) {
             player.x = platforms[0].x + platforms[0].width - 100; // Spawn Player 2 on the right side of the platform
             console.log("Player 2 position:", player.x, player.y);
         }
-    
-        player.y = respawnHeight;
         player.y = platforms[0].y - player.height;
+
+        if (Middle == true) {
+            player.x = platforms[0].x + (platforms[0].width / 2);
+            player.y = respawnHeight;
+        }
+
         player.velocityX = 0;
         player.velocityY = 0;
         player.percentage = 0;
         player.ultimateCharge = 0;
-        player.ultimateReady = false;
+        player.ultimateReady = true;
         player.iFrames = true; // Add invincibility on respawn
         player.disableControls = false;
+
+        player.ignoreGravity = true
     
         // Remove invincibility after 1 second
         setTimeout(() => {
+            player.ignoreGravity = false
             player.iFrames = false;
-        }, 1000);
+        }, 3000);
     }
 
     function resetGame() {
-        audioManager.stopBackgroundMusic('BattleTheme');
+        BattleMusic.stop()
         audioManager.playBackgroundMusic("MainMenu");
         player1.lives = 3;
         player2.lives = 3;
@@ -915,8 +943,8 @@ function startGame(selectedMap) {
             const hitbox = {
                 x: player.x - 10, // Adjust x position to center the hitbox
                 y: player.y - 10, // Adjust y position to center the hitbox
-                width: player.width + 50, // Increase width by 20 pixels
-                height: player.height + 50 // Increase height by 20 pixels
+                width: player.width + 100, // Increase width by 20 pixels
+                height: player.height + 100 // Increase height by 20 pixels
             };
     
             switch (player.character) {
@@ -1015,7 +1043,7 @@ function startGame(selectedMap) {
                         const distance = Math.sqrt(Math.pow(opponentX - burstX, 2) + Math.pow(opponentY - burstY, 2));
     
                         if (distance < 90 * camera.zoom + opponent.width / 2 && !opponent.iFrames && !hasHitOpponent) { // 50 is half of the hitbox size
-                            applyDamage(opponent, 1);
+                            applyDamage(opponent, 5);
                             applyKnockback(player, opponent);
                             hasHitOpponent = true; // Set the flag to true after hitting the opponent
                         }
@@ -1545,7 +1573,7 @@ function startGame(selectedMap) {
                     // Check for hit during the laser animation
                     if (!hitDetected && checkHitLaser(currentX, currentY, opponent)) {
                         hitDetected = true;
-                        applyDamage(opponent, 30); // Higher damage for ultimate
+                        applyDamage(opponent, 50); // Higher damage for ultimate
                         showHitVFX(opponent);
                         screenShake(5, 500);
                         player.ignoreCollisions = false;
@@ -1620,10 +1648,39 @@ function startGame(selectedMap) {
         console.log(player.character);
         
         if (player.character === 1) {
-            audioManager.PauseBackgroundMusic("BattleTheme")
-
-            cutsceneDuration = 3500;
+            BattleMusic.pause()
+            cutsceneDuration = 13000;
             opponent.velocityY = -25;
+
+            async function teleportAround(player, opponent) {
+                let teleportElapsed = 0;
+                const teleportSpeedup = 1.1;
+                const teleportTime = 200; // Total time for teleportation in milliseconds
+                let teleportDuration = 300;
+                const minTeleportDuration = 30;
+            
+                // applyImpactFrames(player, opponent, platforms, context, teleportTime, 100);
+                while (teleportElapsed < teleportTime) {
+                    player.x = opponent.x + (Math.random() - 0.5) * 200; // random X around opponent
+                    player.y = opponent.y + (Math.random() - 0.5) * 200; // random Y around opponent
+            
+                    await sleep(teleportDuration);
+                    
+                    teleportElapsed = teleportElapsed + 1;
+                    teleportDuration = Math.max(teleportDuration / teleportSpeedup, minTeleportDuration);
+
+                    console.log(teleportSpeedup);
+
+                    audioManager.playRandomHitSound()
+                    applyDamage(opponent, 0.1)
+                    opponent.percentage = Math.round(opponent.percentage * 10) / 10;
+            
+                    // console.log(`Elapsed: ${teleportElapsed}ms`);
+                }
+                console.log("Teleportation finished");
+            }            
+            
+        
             setTimeout(() => {              
                 opponent.velocityY = 0;
                 opponent.ignoreGravity = true;
@@ -1633,6 +1690,7 @@ function startGame(selectedMap) {
                     vfxContext.fillStyle = 'white';
                     vfxContext.font = '30px Arial';
                     vfxContext.fillText('Red Fury Ultimate.', vfxCanvas.width / 2 - 100, vfxCanvas.height / 2);
+                    audioManager.playSound('CinematicBoom');
                     setTimeout(() => {              
                         vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
                         player.velocityY = -24;
@@ -1650,22 +1708,46 @@ function startGame(selectedMap) {
                                 vfxContext.fillStyle = 'red';
                                 vfxContext.font = '50px Arial';
                                 vfxContext.fillText('Red Fury', vfxCanvas.width / 2 - 100, vfxCanvas.height / 2);
-                                audioManager.playSound('CinematicBoom');
-                                setTimeout(() => {
-                                    // applyImpactFrames(player, opponent, platforms, 100, 50);
-                                    screenShake(30, 200);
-                                    fireworkHitVfx(opponent, 100, 500);
-                                    applyDamage(opponent, 50); // Higher damage for ultimate
-                                    showHitVFX(opponent);
-                                    opponent.ignoreGravity = false;
-                                    applyKnockback(player, opponent);
+                                audioManager.playSound('FinalHit');
+                                setTimeout(async() => {
+
+                                    vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                                    await teleportAround(player, opponent);
+                                    
+                                    const screenX = (player.x - camera.x) * camera.zoom + gameCanvas.width / 2;
+                                    const screenY = (player.y - camera.y) * camera.zoom + gameCanvas.height / 2;
+                                    vfxContext.fillStyle = "red";
+                                    vfxContext.font = '50px Arial';
+                                    vfxContext.textAlign = 'center'; // Center align the text
+                                    vfxContext.fillText(`Die`, screenX + 20, screenY - 50);
+
+                                    setTimeout(() => {      
+                                        // applyImpactFrames(player, opponent, platforms, context, 100, 50);
+                                        screenShake(30, 200);
+                                        fireworkHitVfx(opponent, 100, 500);
+                                        applyDamage(opponent, 50); // Higher damage for ultimate
+                                        showHitVFX(opponent);
+                                        opponent.ignoreGravity = false;
+                                        applyKnockback(player, opponent);
+                                        audioManager.playRandomHitSound()
+                                    }, 500);
                                 }, 1000);
                             }, 200);
                         }, 300);
-                    }, 1000);
+                    }, 2000);
                 }, 300);
             }, 300);
         }
+
+        // setTimeout(() => {
+        //     // applyImpactFrames(player, opponent, platforms, 100, 50);
+        //     screenShake(30, 200);
+        //     fireworkHitVfx(opponent, 100, 500);
+        //     applyDamage(opponent, 50); // Higher damage for ultimate
+        //     showHitVFX(opponent);
+        //     opponent.ignoreGravity = false;
+        //     applyKnockback(player, opponent);
+        // }, 1000);
     
         // Ensure the canvas is cleared and globalCompositeOperation is reset before starting the cutscene
         vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
@@ -1682,7 +1764,7 @@ function startGame(selectedMap) {
             // Reset globalCompositeOperation to default
             vfxContext.globalCompositeOperation = 'source-over';
             console.log("Cutscene ended for player:", player);
-            audioManager.ResumeBackgroundMusic("BattleTheme")
+            BattleMusic.play()
         }, cutsceneDuration);
     }
     
