@@ -629,6 +629,8 @@ function startGame(selectedMap) {
 
         drawComboHits(context, player1, camera, gameCanvas);
         drawComboHits(context, player2, camera, gameCanvas);
+
+        console.log(player2.disableControls)
         
         requestAnimationFrame(gameLoop);
     }
@@ -1203,7 +1205,7 @@ function startGame(selectedMap) {
             opponent.disableControls = true;
             setTimeout(() => {
                 opponent.disableControls = false;
-            }, 1000); // Adjust the stun duration as needed
+            }, 3000); // Adjust the stun duration as needed
     
             // Update last hit time
             player.lastHitTime = Date.now();
@@ -1333,9 +1335,9 @@ function startGame(selectedMap) {
         const key = event.key.toUpperCase();
         keys[key] = true;
 
-        if (keys[player1.controls.ultimate] && player1.ultimateReady) {
+        if (keys[player1.controls.ultimate] && player1.ultimateReady && !player1.disableControl) {
             useUltimate(player1);
-        } else if (keys[player2.controls.ultimate] && player2.ultimateReady) {
+        } else if (keys[player2.controls.ultimate] && player2.ultimateReady && !player2.disableControl) {
             useUltimate(player2);
         } else if (keys[player1.controls.melee] && !player1.disableControls && !player1.MeleeActive) {
             useMelee(player1);
@@ -1343,9 +1345,9 @@ function startGame(selectedMap) {
         } else if (keys[player2.controls.melee] && !player2.disableControls && !player2.MeleeActive) {
             useMelee(player2);
             player1.MeleeActive = true;
-        } else if (keys[player1.controls.ability] && player1.abilityCooldown == 0) {
+        } else if (keys[player1.controls.ability] && player1.abilityCooldown == 0 && !player1.disableControl) {
             useAbility(player1);
-        } else if (keys[player2.controls.ability] && player2.abilityCooldown == 0) {
+        } else if (keys[player2.controls.ability] && player2.abilityCooldown == 0 && !player2.disableControl) {
             useAbility(player2);
         }
     });
@@ -1699,6 +1701,10 @@ function startGame(selectedMap) {
         opponent.velocityX = 0
         player.disableControls = true;
         opponent.disableControls = true;
+
+        vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+        vfxContext.globalCompositeOperation = 'source-over';
+
         console.log(player.character);
         
         if (player.character === 1) {
@@ -1724,6 +1730,9 @@ function startGame(selectedMap) {
                     teleportDuration = Math.max(teleportDuration / teleportSpeedup, minTeleportDuration);
 
                     console.log(teleportSpeedup);
+
+                    player.disableControls = true;
+                    opponent.disableControls = true;
 
                     audioManager.playRandomHitSound()
                     applyDamage(opponent, 0.1)
