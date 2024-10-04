@@ -617,7 +617,7 @@ function startGame(selectedMap) {
         updateBackground(selectedMap);
 
         updateCamera(camera, [player1, player2], gameCanvas, selectedMap);
-        drawArrows(context, camera, [player1, player2], gameCanvas, 100);
+        drawArrows(context, camera, [player1, player2], gameCanvas, 0);
         
         drawPlatforms();
         updatePlayer(player1);
@@ -935,7 +935,8 @@ function startGame(selectedMap) {
     }
 
     function resetGame() {
-        BattleMusic.stop()
+        console.log(BattleMusic)
+        BattleMusic.pause()
         audioManager.playBackgroundMusic("MainMenu");
         player1.lives = 3;
         player2.lives = 3;
@@ -953,6 +954,9 @@ function startGame(selectedMap) {
         // Reset character selection visibility
         document.getElementById('player1-selection').classList.remove('hidden');
         document.getElementById('player2-selection').classList.add('hidden');
+
+        vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+        vfxContext.globalCompositeOperation = 'source-over';
     }
     
     function useUltimate(player) {
@@ -996,14 +1000,16 @@ function startGame(selectedMap) {
             const opponent = player === player1 ? player2 : player1;
     
             const screenX = (player.x - camera.x) * camera.zoom + gameCanvas.width / 2;
-            const screenY = (player.y - camera.y) * camera.zoom + gameCanvas.width / 2;
-    
+            const screenY = (player.y - camera.y) * camera.zoom + gameCanvas.height / 2; // Fixed calculation
+
             // Display the ability name above the player's head and fade it out
             let alpha = 1.0;
             const fadeOutText = () => {
-                vfxContext.clearRect(screenX - 50, screenY - 50, 100, 20); // Clear previous text
+                // Clear a larger area to avoid residual text
+                vfxContext.clearRect(screenX - 100, screenY - 100, 200, 50); 
                 vfxContext.fillStyle = `rgba(${player.color.r}, ${player.color.g}, ${player.color.b}, ${alpha})`;
                 vfxContext.font = '16px Arial';
+                vfxContext.textAlign = 'center'; // Center the text
                 vfxContext.fillText(player.abilityName, screenX, screenY - 30);
                 alpha -= 0.02;
                 if (alpha > 0) {
@@ -1011,6 +1017,7 @@ function startGame(selectedMap) {
                 }
             };
             fadeOutText();
+
     
             switch (player.abilityName) {
                 case "Repel":
@@ -1063,7 +1070,7 @@ function startGame(selectedMap) {
     
                         if (distance < 90 * camera.zoom + opponent.width / 2 && !opponent.iFrames && !hasHitOpponent) { // 50 is half of the hitbox size
                             applyDamage(opponent, 5);
-                            applyKnockback(player, opponent);
+                            applyKnockback(player, opponent, 1500);
                             hasHitOpponent = true; // Set the flag to true after hitting the opponent
                         }
                     }, 30);
@@ -1074,7 +1081,7 @@ function startGame(selectedMap) {
                         clearInterval(repelInterval);
                     }, 500); // Adjust the duration as needed
     
-                    player.abilityCooldown = 1; // Set to desired cooldown value
+                    player.abilityCooldown = 10; // Set to desired cooldown value
                     break;
                 case "Blue Shot":
                     // Determine the player's last direction

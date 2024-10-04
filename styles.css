@@ -32,12 +32,22 @@ body {
 
 #start-button {
     position: absolute;
-    bottom: 200px;
+    bottom: -10px;
     left: 50%;
-    transform: translate(-50%, -50%);
-    background-color: darkblue;
+    transform: translateX(-50%);
+    width: 100%; /* Adjust as needed */
+    height: 50%; /* Adjust as needed */
+    background: linear-gradient(to bottom, transparent 20%, rgb(69, 132, 226));
     font-family: "ethnocentric", sans-serif;
+    color: white; /* Text color */
+    text-align:center; /* Center text */
+    line-height: 50px; /* Match height to center vertically */
+    border: none; /* Remove default button border */
+    cursor: pointer; /* Pointer cursor on hover */
+    align-items: flex-end; /* Align text to the bottom */
+    padding-top: 80px; /* Adjust as needed to move the text up */
 }
+
 
 #main-menu {
     position: absolute;
@@ -48,12 +58,11 @@ body {
     height: 100%;
     align-items: center;
     justify-content: center;
-    flex-direction: column; /* Add this line */
+    flex-direction: column;
     background-color: rgb(42, 43, 43);
 
-    background: linear-gradient(270deg, #292929 25%, #696969 50%, #292929 75%);
-    background-size: 600% 600%;
-    animation: gradient 15s ease infinite;
+    background: url('images/BackgroundImages/backgroundImageInside.jpg') no-repeat center center;
+    background-size: cover;
 }
 
 #menuLogo {
@@ -66,40 +75,48 @@ body {
 }
 
 #play-button {
-    border: none;
-    color: white;
-    background-color: #1b93d8;
+    border: 2px solid #1b93d8;
+    background: linear-gradient(45deg, rgba(27, 147, 216, 0.7), rgba(27, 31, 61, 0.7));
     text-decoration: none;
     font-size: 50px;
     cursor: pointer;
-    border-radius: 12px;
-    transition: background-color 0.3s, transform 0.3s;
+    border-radius: 15px;
+    transition: background-color 0.3s, transform 0.3s, box-shadow 0.3s;
     padding: 35px 300px;
     margin-bottom: 30px;
     font-family: "ethnocentric", sans-serif;
-  }
+    box-shadow: 0 0 20px #0ff, 0 0 40px #0ff, 0 0 60px #0ff;
+}
 
 #play-button:hover {
-    background-color: #c71f1f;
+    border: 2px solid #d81b1b;
+    background: linear-gradient(45deg, rgba(255, 0, 0, 0.7), rgba(185, 55, 55, 0.7));
+    background-color: rgba(199, 31, 31, 0.7);
+    box-shadow: 0 0 20px rgba(199, 31, 31, 0.7), 0 0 40px rgba(255, 0, 0, 0.7), 0 0 60px rgba(199, 31, 31, 0.7);
+    transform: scale(1.05);
 }
 
 #settings-button {
-    border: none;
-    color: white;
-    background-color: #818181;
+    border: 2px solid #818181;
+    color: #fff;
+    background: linear-gradient(45deg, rgba(47, 49, 54, 0.7), rgba(129, 129, 129, 0.7));
     text-align: center;
     text-decoration: none;
     font-size: 50px;
     cursor: pointer;
-    border-radius: 12px;
-    transition: background-color 0.3s, transform 0.3s;
+    border-radius: 15px;
+    transition: background-color 0.3s, transform 0.3s, box-shadow 0.3s;
     padding: 30px 200px;
     font-family: "ethnocentric", sans-serif;
+    box-shadow: 0 0 20px #fff, 0 0 40px #fff, 0 0 60px #fff;
 }
 
 #settings-button:hover {
-    background-color: #595c59;
+    background-color: rgba(89, 92, 89, 0.7);
+    box-shadow: 0 0 20px rgba(89, 92, 89, 0.7), 0 0 40px rgba(89, 92, 89, 0.7), 0 0 60px rgba(89, 92, 89, 0.7);
+    transform: scale(1.05);
 }
+
 
 #settings-menu {
     background-color: rgba(0, 0, 0, 0.8);
@@ -130,15 +147,21 @@ body {
     color: blue;
 }
 
+#settings-menu button {
+    color: white;
+    background: linear-gradient(45deg, #1b1f3d, #1b93d8);
+    border-radius: 10px;
+    margin-top: 30px;
+    padding: 10px 20px;
+    font-family: 'ethnocentric', sans-serif;
+    cursor: pointer;
+    transition: background-color 0.3s, transform 0.3s, box-shadow 0.3s;
+}
+
 #settings-menu button:hover {
-    background-color: #45a049;
     transform: scale(1.05);
 }
 
-#settings-menu button:active {
-    background-color: #3e8e41;
-    transform: scale(0.95);
-}
 
 #character-selection {
     background-color: rgba(173, 173, 173, 0.4);
@@ -155,7 +178,6 @@ body {
 .player-preview {
     margin-top: 10px;
     text-align: left;
-    margin-bottom: 30px;
     padding: 20px;
     border-radius: 20px;
     width: 100%; /* Ensure it takes the full width of the parent */
@@ -209,7 +231,7 @@ body {
 }
 
 button {
-    background-color: #4CAF50;
+    background-color: #62c0d8;
     border: none;
     color: white;
     padding: 15px 32px;
@@ -218,6 +240,7 @@ button {
     display: inline-block;
     font-size: 16px;
     margin: 4px 2px;
+    margin-top: 30px;
     cursor: pointer;
     border-radius: 12px;
     transition: background-color 0.3s, transform 0.3s;
@@ -225,7 +248,7 @@ button {
 }
 
 button:hover {
-    background-color: #45a049;
+    background-color: #e49090;
     transform: scale(1.05);
 }
 
