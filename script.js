@@ -1428,7 +1428,7 @@ function startGame(selectedMap) {
             // context.clearRect(player.x, player.y, player.width, player.height);
             player.color = playerColor;
             drawPlayer(context, player); // Redraw the player to fix the clearing issue
-        }, 100);
+        }, 50);
     }
 
     function applyImpactFrames(player, opponent, platforms, context, duration = 100, switchInterval = 50) {
