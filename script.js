@@ -30,7 +30,7 @@ let player1 = {
     weight: 10,
     comboHits: 0,
     lastHitTime: 0,
-    comboCooldown: false,
+    MeleeActive: false,
     isFalling: false,
     iFrames: false,
     visible: true,
@@ -70,7 +70,7 @@ let player2 = {
     weight: 10,
     comboHits: 0,
     lastHitTime: 0,
-    comboCooldown: false,
+    MeleeActive: false,
     isFalling: false,
     iFrames: false,
     visible: true,
@@ -207,21 +207,36 @@ const maps = {
         { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
         { x: 0.3, y: 0.68, width: 0.4, height: 0.02, allowDropThrough: true },
         { maxDistanceThreshold: 3000, minZoom: 0.3, maxZoom: 1.2 },
-        { backgroundImage: 'images/BackgroundImages/mountainsSnow.jpg', speed: 0.1, x: 0, y: 0}
+        { backgroundImage: 'images/BackgroundImages/mountainsSnow.jpg', speed: 0.1, x: 0, zoom: 0}
     ],
     map2: [
         { x: 0.2, y: 0.8, width: 0.6, height: 0.02, allowDropThrough: false },
         { x: 0.1, y: 0.68, width: 0.1, height: 0.02, allowDropThrough: true },
         { x: 0.8, y: 0.68, width: 0.1, height: 0.02, allowDropThrough: true },
         { maxDistanceThreshold: 2500, minZoom: 0.6, maxZoom: 1.4 },
-        { backgroundImage: 'images/BackgroundImages/mountainsFar.jpg', speed: 0.1,  x: 0, y: 0}
+        { backgroundImage: 'images/BackgroundImages/mountainSnowTrees.jpg', speed: 0.1,  x: 0, zoom: 0}
     ],
     map3: [
         { x: 0.1, y: 0.8, width: 0.8, height: 0.02, allowDropThrough: false },
         { x: 0.2, y: 0.65, width: 0.6, height: 0.02, allowDropThrough: true },
         { x: 0.3, y: 0.55, width: 0.4, height: 0.02, allowDropThrough: true },
         { maxDistanceThreshold: 100, minZoom: 0.7, maxZoom: 1.3 },
-        { backgroundImage: 'images/BackgroundImages/mountainsSunset.webp', speed: 0.1, x: 0, y: 0}
+        { backgroundImage: 'images/BackgroundImages/mountainsSunset.webp', speed: 0.1, x: 0, zoom: 0}
+    ],
+    map4: [
+        { x: 0.05, y: 0.95, width: 0.9, height: 0.02, allowDropThrough: false },
+        { x: 0.2, y: 0.75, width: 0.3, height: 0.02, allowDropThrough: true },
+        { x: 0.5, y: 0.75, width: 0.3, height: 0.02, allowDropThrough: true },
+        { x: 0.1, y: 0.55, width: 0.3, height: 0.02, allowDropThrough: true },
+        { x: 0.6, y: 0.55, width: 0.3, height: 0.02, allowDropThrough: true },
+        { x: 0.2, y: 0.45, width: 0.3, height: 0.02, allowDropThrough: true },
+        { x: 0.5, y: 0.45, width: 0.3, height: 0.02, allowDropThrough: true },
+        { x: 0.1, y: 0.25, width: 0.3, height: 0.02, allowDropThrough: true },
+        { x: 0.6, y: 0.25, width: 0.3, height: 0.02, allowDropThrough: true },
+        { x: 0.2, y: 0.15, width: 0.3, height: 0.02, allowDropThrough: true },
+        { x: 0.5, y: 0.15, width: 0.3, height: 0.02, allowDropThrough: true },
+        { maxDistanceThreshold: 1000, minZoom: 0.7, maxZoom: 1.5 },
+        { backgroundImage: 'images/BackgroundImages/mountainsRock.png', speed: 0.05, x: 0, zoom: 0 }
     ]
 };
 
@@ -248,8 +263,9 @@ function updateBackground(currentMap) {
     }
     const background = mapSettings.find(item => item.backgroundImage !== undefined);
     if (background) {
+        
         background.x -= (player1.velocityX + player2.velocityX) / 2 * background.speed;
-        if (background.x <= -bgCanvas.width) {
+        if (background.x <= -bgCanvas.width * camera.zoom) {
             background.x = 0;
         }
     }
@@ -266,6 +282,10 @@ function drawBackground(context, currentMap) {
         // Check if backgroundImage is a valid image element
         if (backgroundImage instanceof HTMLImageElement) {
             if (backgroundImage !== background.backgroundImage) {
+                const scaledWidth = bgCanvas.width * camera.zoom;
+                const scaledHeight = bgCanvas.height * camera.zoom;
+                const xOffset = (scaledWidth - bgCanvas.width);
+
                 context.drawImage(backgroundImage, background.x, 0, bgCanvas.width, bgCanvas.height);
                 context.drawImage(backgroundImage, background.x + bgCanvas.width, 0, bgCanvas.width, bgCanvas.height);
                 context.drawImage(backgroundImage, background.x - bgCanvas.width, 0, bgCanvas.width, bgCanvas.height);
@@ -453,6 +473,7 @@ function drawMapPreview(map, canvasId) {
 drawMapPreview(maps.map1, 'map1-preview');
 drawMapPreview(maps.map2, 'map2-preview');
 drawMapPreview(maps.map3, 'map3-preview');
+drawMapPreview(maps.map4, 'map4-preview');
 
 function scaleMapData(map, canvas) {
     return map.map(platform => ({
@@ -596,7 +617,7 @@ function startGame(selectedMap) {
         updateBackground(selectedMap);
 
         updateCamera(camera, [player1, player2], gameCanvas, selectedMap);
-        drawArrows(context, camera, [player1, player2], gameCanvas, 200);
+        drawArrows(context, camera, [player1, player2], gameCanvas, 100);
         
         drawPlatforms();
         updatePlayer(player1);
@@ -681,9 +702,7 @@ function startGame(selectedMap) {
         }
 
         // Check for falling off the platform
-        if (player.y + player.height >= gameCanvas.height + 600 || 
-            player.x < -player.width - camera.x || 
-            player.x > gameCanvas.width + camera.x) {
+        if (player.y + player.height >= gameCanvas.height + 600) { //player.x < -player.width - camera.x || player.x > gameCanvas.width + camera.x)
             if (!player.isFalling) {
                 player.isFalling = true; // Mark the player as falling
                 player.visible = false; // Hide the player
@@ -1302,66 +1321,94 @@ function startGame(selectedMap) {
         context.strokeRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
     }
 
+    const keys = {};
     document.addEventListener('keydown', (event) => {
         const key = event.key.toUpperCase();
-        if (key === player1.controls.ultimate && player1.ultimateReady) {
+        keys[key] = true;
+
+        if (keys[player1.controls.ultimate] && player1.ultimateReady) {
             useUltimate(player1);
-        } else if (key === player2.controls.ultimate && player2.ultimateReady) {
+        } else if (keys[player2.controls.ultimate] && player2.ultimateReady) {
             useUltimate(player2);
-        } else if (key === player1.controls.melee && !player1.disableControls) {
+        } else if (keys[player1.controls.melee] && !player1.disableControls && !player1.MeleeActive) {
             useMelee(player1);
-        } else if (key === player2.controls.melee && !player2.disableControls) {
+            player1.MeleeActive = true;
+        } else if (keys[player2.controls.melee] && !player2.disableControls && !player2.MeleeActive) {
             useMelee(player2);
-        } else if (key === player1.controls.ability && player1.abilityCooldown == 0) {
+            player1.MeleeActive = true;
+        } else if (keys[player1.controls.ability] && player1.abilityCooldown == 0) {
             useAbility(player1);
-        } else if (key === player2.controls.ability && player2.abilityCooldown == 0) {
+        } else if (keys[player2.controls.ability] && player2.abilityCooldown == 0) {
             useAbility(player2);
         }
-        handleMovement(key, player1);
-        handleMovement(key, player2);
     });
 
     document.addEventListener('keyup', (event) => {
         const key = event.key.toUpperCase();
+        keys[key] = false;
+
         if (key === player1.controls.left || key === player1.controls.right) {
             player1.velocityX = 0;
         } else if (key === player2.controls.left || key === player2.controls.right) {
             player2.velocityX = 0;
-        }
+        } else if (key === player1.controls.melee) {
+            player1.MeleeActive = false;
+        } else if (key === player2.controls.melee) {
+            player2.MeleeActive = false;
+        };
     });
 
-    function handleMovement(key, player) {
+    function handleMovement(player) {
         if (!player.disableControls) {
-            switch (key) {
-                case player.controls.up:
-                    if (player.onGround) {
-                        player.velocityY = -15;
-                        player.onGround = false;
-                    }
-                    break;
-                case player.controls.left:
-                    player.velocityX = -5;
-                    break;
-                case player.controls.down:
-                    // Check if the player is on a platform that allows drop through
-                    const currentPlatform = platforms.find(platform => 
-                        player.x < platform.x + platform.width &&
-                        player.x + player.width > platform.x &&
-                        player.y + player.height >= platform.y &&
-                        player.y + player.height <= platform.y + platform.height
-                    );
-        
-                    if (currentPlatform && currentPlatform.allowDropThrough) {
-                        player.y += currentPlatform.height + 30;
-                        player.ignoreCollisions = false
-                    }
-                    break;
-                case player.controls.right:
-                    player.velocityX = 5;
-                    break;
+            if (keys[player.controls.up] && player.onGround) {
+                player.velocityY = -15;
+                player.onGround = false;
+            }
+            if (keys[player.controls.left]) {
+                player.velocityX = -5;
+            } else if (keys[player.controls.right]) {
+                player.velocityX = 5;
+            } else {
+                player.velocityX = 0;
+            }
+    
+            // Check for down key to allow drop through platforms
+            if (keys[player.controls.down]) {
+                const currentPlatform = platforms.find(platform => 
+                    player.x < platform.x + platform.width &&
+                    player.x + player.width > platform.x &&
+                    player.y + player.height >= platform.y &&
+                    player.y + player.height <= platform.y + platform.height
+                );
+                
+                // if 
+                console.log("Current platform:", currentPlatform); // Debug log
+    
+                if (currentPlatform && currentPlatform.allowDropThrough) {
+                    player.y += currentPlatform.height + 35;
+                    console.log("fall"); // Debug log
+                    player.ignoreCollisions = false;
+                }
             }
         }
     }
+    function throttle(fn, wait) {
+        let time = Date.now();
+        return function() {
+            if ((time + wait - Date.now()) < 0) {
+                fn();
+                time = Date.now();
+            }
+        };
+    }
+
+    function updateMovements() {
+        handleMovement(player1);
+        handleMovement(player2);
+    }
+    
+    // Call updateMovements every 16ms (60fps)
+    setInterval(throttle(updateMovements, 16), 1000 / 60)
 
     // VFX for when a player gets hit
     function showHitVFX(player) {
