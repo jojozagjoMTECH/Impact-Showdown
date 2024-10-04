@@ -1344,7 +1344,7 @@ function startGame(selectedMap) {
             player1.MeleeActive = true;
         } else if (keys[player2.controls.melee] && !player2.disableControls && !player2.MeleeActive) {
             useMelee(player2);
-            player1.MeleeActive = true;
+            player2.MeleeActive = true;
         } else if (keys[player1.controls.ability] && player1.abilityCooldown == 0 && !player1.disableControl) {
             useAbility(player1);
         } else if (keys[player2.controls.ability] && player2.abilityCooldown == 0 && !player2.disableControl) {
