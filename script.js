@@ -828,7 +828,7 @@ function startGame(selectedMap) {
     function checkPlatformCollision(player) {
         player.onGround = false;
         const baseDampingFactor = 0.8;
-        const breakVelocityThreshold = 15;
+        const breakVelocityThreshold = 20;
     
         platforms.forEach(platform => {
             platform.voxels.forEach(voxel => {
@@ -836,7 +836,7 @@ function startGame(selectedMap) {
                     // Check if the player is touching the top of the voxel
                     if (player.y + player.height >= voxel.y && player.y + player.height <= voxel.y + voxel.height) {
                         if (player.knockbackActive) {
-                            player.y = voxel.y - player.height - 0.5;
+                            player.y = voxel.y - player.height + 0.5;
                             player.bounceCount = (player.bounceCount || 0) + 1;
                             const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1);
                             player.velocityY = -Math.abs(player.velocityY) / dampingFactor;
@@ -844,9 +844,15 @@ function startGame(selectedMap) {
                             audioManager.playRandomHitSound();
     
                             // Check if the player hit with enough force to break the voxel
-                            if (Math.abs(player.velocityY) > breakVelocityThreshold && voxel.intact && player.bounceCount > 2) {
+                            if (Math.abs(player.velocityY) > breakVelocityThreshold) {
                                 voxel.intact = false;
                                 breakVoxel(voxel, player);
+                                // Continue breaking through voxels if player is moving fast enough
+                                while (Math.abs(player.velocityY) > breakVelocityThreshold && player.y + player.height >= voxel.y) {
+                                    voxel.intact = false;
+                                    breakVoxel(voxel, player);
+                                    voxel = getNextVoxelBelow(player, platform); // Get next voxel below the current one
+                                }
                             }
                         } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the voxel
                             player.y = voxel.y - player.height;
@@ -864,20 +870,36 @@ function startGame(selectedMap) {
                         createSmokeVfx(player, "top", 50);
                         audioManager.playRandomHitSound();
     
-                        if (Math.abs(player.velocityY) > breakVelocityThreshold && voxel.intact && player.bounceCount > 2) {
+                        if (Math.abs(player.velocityY) > breakVelocityThreshold) {
                             voxel.intact = false;
                             breakVoxel(voxel, player);
+                            // Continue breaking through voxels if player is moving fast enough
+                            while (Math.abs(player.velocityY) > breakVelocityThreshold && player.y <= voxel.y + voxel.height) {
+                                voxel.intact = false;
+                                breakVoxel(voxel, player);
+                                voxel = getNextVoxelAbove(player, platform); // Get next voxel above the current one
+                            }
                         }
                     }
                 }
             });
         });
-    
         // Ensure the player doesn't bounce if not colliding with any platform
         if (!player.onGround && !player.knockbackActive) {
             player.bounceCount = 0;
         }
-    }     
+    }
+    
+    function getNextVoxelBelow(player, platform) {
+        return platform.voxels.find(voxel => player.x < voxel.x + voxel.width &&
+            player.x + player.width > voxel.x && player.y + player.height < voxel.y);
+    }
+    
+    function getNextVoxelAbove(player, platform) {
+        return platform.voxels.find(voxel => player.x < voxel.x + voxel.width &&
+            player.x + player.width > voxel.x && player.y > voxel.y + voxel.height);
+    }
+    
     
     function createVoxelsForArea(platform, startX, startY, width, height) {
         const voxels = [];
@@ -893,8 +915,11 @@ function startGame(selectedMap) {
         voxel.intact = false;
         const impactDirectionX = player.velocityX;
         const impactDirectionY = player.velocityY;
-        const explosionForceX = impactDirectionX * 1;
-        const explosionForceY = impactDirectionY * 1;
+    
+        // Calculate the opposite direction for the explosion
+        const explosionForceX = impactDirectionX * 2; // Adjust multiplier as needed for burst effect
+        const explosionForceY = impactDirectionY * 2; // Adjust multiplier as needed for burst effect
+    
         applyPhysicsToPiece(voxel, explosionForceX, explosionForceY);
         console.log("Voxel broken at point:", voxel.x, voxel.y, "with forces:", explosionForceX, explosionForceY);
     }
@@ -912,8 +937,26 @@ function startGame(selectedMap) {
                 voxel.y < platform.y + platform.height && voxel.y + voxel.height > platform.y) {
                 voxel.velocityX = 0;
                 voxel.velocityY = -gravity; // Example gravity effect, adjust as needed
-                voxel.intact = true; // Ensure voxel is marked as broken
+                voxel.intact = false; // Ensure voxel is marked as broken
+    
+                // Start a timer to reset voxel's state if it hasn't moved for 5 seconds
+                if (!voxel.movementTimer) {
+                    voxel.movementTimer = setTimeout(() => {
+                        if (voxel.velocityX === 0 && voxel.velocityY === 0) {
+                            voxel.intact = true;
+                            voxel.broken = false;
+                            console.log("Voxel became intact again:", voxel.x, voxel.y);
+                        }
+                    }, 5000); // 5 seconds
+                }
+    
                 console.log("Voxel collided with platform at point:", voxel.x, voxel.y);
+            } else {
+                // Clear the timer if the voxel is moving again
+                if (voxel.movementTimer) {
+                    clearTimeout(voxel.movementTimer);
+                    voxel.movementTimer = null;
+                }
             }
         });
     }    
