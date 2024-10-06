@@ -805,7 +805,7 @@ function startGame(selectedMap) {
                 if (!voxel.intact) {
                     // Apply physics to broken voxels
                     if (voxel.gravity) {
-                        voxel.velocityY += gravity; // Example gravity effect, adjust as needed
+                        voxel.velocityY += gravity / 2; // Example gravity effect, adjust as needed
                     }
     
                     voxel.velocityX += (Math.random() - 0.5) * 0.2;
@@ -844,7 +844,7 @@ function startGame(selectedMap) {
                             audioManager.playRandomHitSound();
     
                             // Check if the player hit with enough force to break the voxel
-                            if (Math.abs(player.velocityY) > breakVelocityThreshold && voxel.intact) {
+                            if (Math.abs(player.velocityY) > breakVelocityThreshold && voxel.intact && player.bounceCount > 1) {
                                 voxel.intact = false;
                                 breakVoxel(voxel, player);
                             }
@@ -864,7 +864,7 @@ function startGame(selectedMap) {
                         createSmokeVfx(player, "top", 50);
                         audioManager.playRandomHitSound();
 
-                        if (Math.abs(player.velocityY) > breakVelocityThreshold && voxel.intact == true) {
+                        if (Math.abs(player.velocityY) > breakVelocityThreshold && voxel.intact && player.bounceCount > 1) {
                             voxel.intact = false;
                             breakVoxel(voxel, player);
                         }
@@ -882,7 +882,7 @@ function startGame(selectedMap) {
         const voxels = [];
         for (let x = startX; x < startX + width; x += VOXEL_SIZE) {
             for (let y = startY; y < startY + height; y += VOXEL_SIZE) {
-                voxels.push({ x, y, width: VOXEL_SIZE, height: VOXEL_SIZE, intact: true, velocityX: 0, velocityY: 0, gravity: true});
+                voxels.push({ x, y, width: VOXEL_SIZE + 0.7, height: VOXEL_SIZE + 0.7, intact: true, velocityX: 0, velocityY: 0, gravity: true});
             }
         }
         return voxels;
@@ -910,8 +910,8 @@ function startGame(selectedMap) {
             if (voxel.x < platform.x + platform.width && voxel.x + voxel.width > platform.x &&
                 voxel.y < platform.y + platform.height && voxel.y + voxel.height > platform.y) {
                 voxel.velocityX = 0;
-                voxel.velocityY = -0.1; // Example gravity effect, adjust as needed
-                voxel.intact = false; // Ensure voxel is marked as broken
+                voxel.velocityY = -gravity; // Example gravity effect, adjust as needed
+                voxel.intact = true; // Ensure voxel is marked as broken
                 console.log("Voxel collided with platform at point:", voxel.x, voxel.y);
             }
         });
@@ -1427,14 +1427,16 @@ function startGame(selectedMap) {
                     player.y + player.height >= platform.y &&
                     player.y + player.height <= platform.y + platform.height
                 );
-                
-                // if 
+        
                 console.log("Current platform:", currentPlatform); // Debug log
-    
+        
                 if (currentPlatform && currentPlatform.allowDropThrough) {
                     player.y += currentPlatform.height + 35;
-                    console.log("fall"); // Debug log
-                    player.ignoreCollisions = false;
+                    player.ignoreCollisions = true; // Set a flag to ignore collisions temporarily
+        
+                    setTimeout(() => {
+                        player.ignoreCollisions = false; // Reset the flag after a brief period
+                    }, 500); // Adjust the delay as needed
                 }
             }
         }
