@@ -828,61 +828,62 @@ function startGame(selectedMap) {
     function checkPlatformCollision(player) {
         player.onGround = false;
         const baseDampingFactor = 0.8;
-        const breakVelocityThreshold = 12;
+        const breakVelocityThreshold = 20;
+        const fullBreakVelocityThreshold = 100; // Set this to the desired threshold for breaking the entire platform
+        const breakRadius = 50; // Adjust this for the area around the impact point to be affected
     
         platforms.forEach(platform => {
-            platform.voxels.forEach(voxel => {
-                if (player.x < voxel.x + voxel.width && player.x + player.width > voxel.x && voxel.intact) {
-                    // Check if the player is touching the top of the voxel
-                    if (player.y + player.height >= voxel.y && player.y + player.height <= voxel.y + voxel.height) {
-                        if (player.knockbackActive) {
-                            player.y = voxel.y - player.height - 0.5;
+            if (Math.abs(player.velocityY) > fullBreakVelocityThreshold) {
+                // Break the entire platform
+                platform.voxels.forEach(voxel => {
+                    if (voxel.intact) {
+                        voxel.intact = false;
+                        breakVoxel(voxel, player, breakRadius);
+                    }
+                });
+                console.log("Entire platform broken due to high velocity impact.");
+            } else {
+                platform.voxels.forEach(voxel => {
+                    if (player.x < voxel.x + voxel.width && player.x + player.width > voxel.x && voxel.intact) {
+                        // Check if the player is touching the top of the voxel
+                        if (player.y + player.height >= voxel.y && player.y < voxel.y + voxel.height / 2) {
+                            if (player.knockbackActive) {
+                                player.y = voxel.y - player.height;
+                                player.bounceCount = (player.bounceCount || 0) + 1;
+                                const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1);
+                                player.velocityY = -Math.abs(player.velocityY) / dampingFactor;
+                                createSmokeVfx(player, "bottom", 50);
+                                audioManager.playRandomHitSound();
+    
+                                // Check if the player hit with enough force to break the voxel
+                                if (Math.abs(player.velocityY) > breakVelocityThreshold) {
+                                    voxel.intact = false;
+                                    breakVoxel(voxel, player, breakRadius);
+                                }
+                            } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the voxel
+                                player.y = voxel.y - player.height;
+                                player.velocityY = 0;
+                                player.onGround = true;
+                                player.bounceCount = 0;
+                            }
+                        }
+                        // Check if the player is touching the bottom of the voxel
+                        if (player.knockbackActive && player.y <= voxel.y + voxel.height &&
+                            player.y + player.height > voxel.y + voxel.height / 2 && player.velocityY < 0) { // Ensure the player is moving upwards
                             player.bounceCount = (player.bounceCount || 0) + 1;
                             const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1);
-                            player.velocityY = -Math.abs(player.velocityY) / dampingFactor;
-                            createSmokeVfx(player, "bottom", 50);
+                            player.velocityY = Math.abs(player.velocityY) / dampingFactor;
+                            createSmokeVfx(player, "top", 50);
                             audioManager.playRandomHitSound();
     
-                            // Check if the player hit with enough force to break the voxel
                             if (Math.abs(player.velocityY) > breakVelocityThreshold) {
                                 voxel.intact = false;
-                                breakVoxel(voxel, player);
-                                // Continue breaking through voxels if player is moving fast enough
-                                while (Math.abs(player.velocityY) > breakVelocityThreshold && player.y + player.height >= voxel.y) {
-                                    voxel.intact = false;
-                                    breakVoxel(voxel, player);
-                                    voxel = getNextVoxelBelow(player, platform); // Get next voxel below the current one
-                                }
-                            }
-                        } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the voxel
-                            player.y = voxel.y - player.height;
-                            player.velocityY = 0;
-                            player.onGround = true;
-                            player.bounceCount = 0;
-                        }
-                    }
-                    // Check if the player is touching the bottom of the voxel
-                    if (player.knockbackActive && player.y <= voxel.y + voxel.height &&
-                        player.y + player.height > voxel.y && player.velocityY < 0) { // Ensure the player is moving upwards
-                        player.bounceCount = (player.bounceCount || 0) + 1;
-                        const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1);
-                        player.velocityY = Math.abs(player.velocityY) / dampingFactor;
-                        createSmokeVfx(player, "top", 50);
-                        audioManager.playRandomHitSound();
-    
-                        if (Math.abs(player.velocityY) > breakVelocityThreshold) {
-                            voxel.intact = false;
-                            breakVoxel(voxel, player);
-                            // Continue breaking through voxels if player is moving fast enough
-                            while (Math.abs(player.velocityY) > breakVelocityThreshold && player.y <= voxel.y + voxel.height) {
-                                voxel.intact = false;
-                                breakVoxel(voxel, player);
-                                voxel = getNextVoxelAbove(player, platform); // Get next voxel above the current one
+                                breakVoxel(voxel, player, breakRadius);
                             }
                         }
                     }
-                }
-            });
+                });
+            }
         });
         // Ensure the player doesn't bounce if not colliding with any platform
         if (!player.onGround && !player.knockbackActive) {
@@ -911,17 +912,35 @@ function startGame(selectedMap) {
         return voxels;
     }
     
-    function breakVoxel(voxel, player) {
+    function breakVoxel(voxel, player, radius) {
         voxel.intact = false;
         const impactDirectionX = player.velocityX;
         const impactDirectionY = player.velocityY;
     
-        // Calculate the opposite direction for the explosion
-        const explosionForceX = impactDirectionX * 2; // Adjust multiplier as needed for burst effect
-        const explosionForceY = impactDirectionY * 2; // Adjust multiplier as needed for burst effect
+        // Calculate the explosion force for the broken voxel
+        const explosionForceX = impactDirectionX * 2; // Adjust multiplier as needed
+        const explosionForceY = impactDirectionY * 2; // Adjust multiplier as needed
     
         applyPhysicsToPiece(voxel, explosionForceX, explosionForceY);
         console.log("Voxel broken at point:", voxel.x, voxel.y, "with forces:", explosionForceX, explosionForceY);
+    
+        // Break voxels in the specified radius
+        breakNeighborVoxels(voxel, player, radius);
+    }
+    
+    function breakNeighborVoxels(centerVoxel, player, radius) {
+        platforms.forEach(platform => {
+            platform.voxels.forEach(voxel => {
+                const distance = Math.hypot(voxel.x - centerVoxel.x, voxel.y - centerVoxel.y);
+                if (distance <= radius && voxel.intact) {
+                    voxel.intact = false;
+                    const explosionForceX = (voxel.x - centerVoxel.x) * 0.1;
+                    const explosionForceY = (voxel.y - centerVoxel.y) * 0.1;
+                    applyPhysicsToPiece(voxel, explosionForceX, explosionForceY);
+                    console.log("Neighbor voxel broken at point:", voxel.x, voxel.y, "with forces:", explosionForceX, explosionForceY);
+                }
+            });
+        });
     }
     
     function applyPhysicsToPiece(piece, forceX, forceY) {
