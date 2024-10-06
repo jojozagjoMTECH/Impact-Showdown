@@ -828,15 +828,15 @@ function startGame(selectedMap) {
     function checkPlatformCollision(player) {
         player.onGround = false;
         const baseDampingFactor = 0.8;
-        const breakVelocityThreshold = 10;
+        const breakVelocityThreshold = 15;
     
         platforms.forEach(platform => {
             platform.voxels.forEach(voxel => {
                 if (player.x < voxel.x + voxel.width && player.x + player.width > voxel.x && voxel.intact) {
                     // Check if the player is touching the top of the voxel
-                    if (player.y + player.height >= voxel.y && player.y < voxel.y) {
+                    if (player.y + player.height >= voxel.y && player.y + player.height <= voxel.y + voxel.height) {
                         if (player.knockbackActive) {
-                            player.y = voxel.y - player.height;
+                            player.y = voxel.y - player.height - 0.5;
                             player.bounceCount = (player.bounceCount || 0) + 1;
                             const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1);
                             player.velocityY = -Math.abs(player.velocityY) / dampingFactor;
@@ -844,7 +844,7 @@ function startGame(selectedMap) {
                             audioManager.playRandomHitSound();
     
                             // Check if the player hit with enough force to break the voxel
-                            if (Math.abs(player.velocityY) > breakVelocityThreshold && voxel.intact && player.bounceCount > 1) {
+                            if (Math.abs(player.velocityY) > breakVelocityThreshold && voxel.intact && player.bounceCount > 2) {
                                 voxel.intact = false;
                                 breakVoxel(voxel, player);
                             }
@@ -857,14 +857,14 @@ function startGame(selectedMap) {
                     }
                     // Check if the player is touching the bottom of the voxel
                     if (player.knockbackActive && player.y <= voxel.y + voxel.height &&
-                        player.y + player.height > voxel.y + voxel.height && player.velocityY < 0) { // Ensure the player is moving upwards
+                        player.y + player.height > voxel.y && player.velocityY < 0) { // Ensure the player is moving upwards
                         player.bounceCount = (player.bounceCount || 0) + 1;
                         const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1);
                         player.velocityY = Math.abs(player.velocityY) / dampingFactor;
                         createSmokeVfx(player, "top", 50);
                         audioManager.playRandomHitSound();
-
-                        if (Math.abs(player.velocityY) > breakVelocityThreshold && voxel.intact && player.bounceCount > 1) {
+    
+                        if (Math.abs(player.velocityY) > breakVelocityThreshold && voxel.intact && player.bounceCount > 2) {
                             voxel.intact = false;
                             breakVoxel(voxel, player);
                         }
@@ -872,11 +872,12 @@ function startGame(selectedMap) {
                 }
             });
         });
+    
         // Ensure the player doesn't bounce if not colliding with any platform
         if (!player.onGround && !player.knockbackActive) {
             player.bounceCount = 0;
         }
-    }
+    }     
     
     function createVoxelsForArea(platform, startX, startY, width, height) {
         const voxels = [];
@@ -1331,7 +1332,7 @@ function startGame(selectedMap) {
     
         // Apply knockback in the opposite direction
         opponent.velocityX = normalizedDirectionX * knockbackForce;
-        opponent.velocityY = (normalizedDirectionY * knockbackForce) + knockbackForce;
+        opponent.velocityY = (normalizedDirectionY * knockbackForce) - knockbackForce;
         // console.log(normalizedDirectionX * knockbackForce, normalizedDirectionY * knockbackForce)
         opponent.knockbackActive = true;
         opponent.disableControls = true;
