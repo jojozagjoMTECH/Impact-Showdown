@@ -828,7 +828,7 @@ function startGame(selectedMap) {
     function checkPlatformCollision(player) {
         player.onGround = false;
         const baseDampingFactor = 0.8;
-        const breakVelocityThreshold = 20;
+        const breakVelocityThreshold = 12;
     
         platforms.forEach(platform => {
             platform.voxels.forEach(voxel => {
@@ -836,7 +836,7 @@ function startGame(selectedMap) {
                     // Check if the player is touching the top of the voxel
                     if (player.y + player.height >= voxel.y && player.y + player.height <= voxel.y + voxel.height) {
                         if (player.knockbackActive) {
-                            player.y = voxel.y - player.height + 0.5;
+                            player.y = voxel.y - player.height - 0.5;
                             player.bounceCount = (player.bounceCount || 0) + 1;
                             const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1);
                             player.velocityY = -Math.abs(player.velocityY) / dampingFactor;
