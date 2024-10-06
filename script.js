@@ -816,7 +816,7 @@ function startGame(selectedMap) {
     
                     checkVoxelCollision(voxel, platform);
     
-                    context.fillStyle = 'orange'; // Visual distinction for broken voxels
+                    context.fillStyle = 'green'; // Visual distinction for broken voxels
                 } else {
                     context.fillStyle = platform.color || 'green';
                 }
@@ -863,6 +863,11 @@ function startGame(selectedMap) {
                         player.velocityY = Math.abs(player.velocityY) / dampingFactor;
                         createSmokeVfx(player, "top", 50);
                         audioManager.playRandomHitSound();
+
+                        if (Math.abs(player.velocityY) > breakVelocityThreshold && voxel.intact == true) {
+                            voxel.intact = false;
+                            breakVoxel(voxel, player);
+                        }
                     }
                 }
             });
@@ -887,8 +892,8 @@ function startGame(selectedMap) {
         voxel.intact = false;
         const impactDirectionX = player.velocityX;
         const impactDirectionY = player.velocityY;
-        const explosionForceX = -impactDirectionX * 0.5;
-        const explosionForceY = -impactDirectionY * 0.5;
+        const explosionForceX = impactDirectionX * 1;
+        const explosionForceY = impactDirectionY * 1;
         applyPhysicsToPiece(voxel, explosionForceX, explosionForceY);
         console.log("Voxel broken at point:", voxel.x, voxel.y, "with forces:", explosionForceX, explosionForceY);
     }
@@ -905,7 +910,7 @@ function startGame(selectedMap) {
             voxel.y < platform.y + platform.height && voxel.y + voxel.height > platform.y) {
             voxel.velocityX = 0;
             voxel.velocityY = -gravity;
-            console.log("Voxel collided with platform at point:", voxel.x, voxel.y);
+            // console.log("Voxel collided with platform at point:", voxel.x, voxel.y);
         }
     }    
     
