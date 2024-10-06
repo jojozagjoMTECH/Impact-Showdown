@@ -3,3 +3,39 @@ create a 2 player fighting game using css html and javascript could you make me 
 
 Todo List:
 -Countdown for battle
+ 
+
+Player collistion:
+ // Check collision with other players only if not bouncing
+        
+        // if (!player.knockbackActive) {
+        //     const otherPlayer = player === player1 ? player2 : player1;
+        //     if (player.x < otherPlayer.x + otherPlayer.width &&
+        //         player.x + player.width > otherPlayer.x) {
+        //         // Check if the player is touching the top of the other player
+        //         if (player.y + player.height >= otherPlayer.y &&
+        //             player.y < otherPlayer.y) {
+        //             if (player.knockbackActive) {
+        //                 player.y = otherPlayer.y - player.height;
+        //                 player.bounceCount = (player.bounceCount || 0) + 1; // Increment bounce count
+        //                 const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
+        //                 player.velocityY = -Math.abs(player.velocityY) / dampingFactor; // Bounce off the other player with reduced speed
+        //                 createSmokeVfx(player, "bottom", 50);
+        //             } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the other player
+        //                 player.y = otherPlayer.y - player.height;
+        //                 player.velocityY = 0;
+        //                 player.onGround = true;
+        //                 player.bounceCount = 0; // Reset bounce count when player lands
+        //             }
+        //         }
+        //         // Check if the player is touching the bottom of the other player
+        //         if (player.knockbackActive && player.y <= otherPlayer.y + otherPlayer.height &&
+        //             player.y + player.height > otherPlayer.y + otherPlayer.height &&
+        //             player.velocityY < 0) { // Ensure the player is moving upwards
+        //             player.bounceCount = (player.bounceCount || 0) + 1; // Increment bounce count
+        //             const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
+        //             player.velocityY = Math.abs(player.velocityY) / dampingFactor; // Bounce off the other player with reduced speed
+        //             createSmokeVfx(player, "top", 50);
+        //         }
+        //     }
+        // }

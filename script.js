@@ -175,6 +175,7 @@ const audioManager = new AudioManager();
 // audioManager.playSound('hit');
 
 let gameLoopRunning = false;
+const VOXEL_SIZE = 10; // Define voxel size
 const gravity = 0.4;
 const friction = 0.9;
 const gameCanvas = document.getElementById('game-canvas');
@@ -591,6 +592,8 @@ function startGame(selectedMap) {
     const scaledMap = scaleMapData(maps[selectedMap], gameCanvas);
     platforms = scaledMap;
 
+    initializePlatformsAsVoxels()
+
     audioManager.stopBackgroundMusic('MainMenu');
 
     const BattleMusic = audioManager.getRandomBackgroundMusic();
@@ -629,8 +632,6 @@ function startGame(selectedMap) {
 
         drawComboHits(context, player1, camera, gameCanvas);
         drawComboHits(context, player2, camera, gameCanvas);
-
-        console.log(player2.disableControls)
         
         requestAnimationFrame(gameLoop);
     }
@@ -787,98 +788,127 @@ function startGame(selectedMap) {
         context.fillText(`${player.percentage}%`, adjustedX, adjustedY - 20 * camera.zoom);
     }
 
+    function initializePlatformsAsVoxels() {
+        platforms.forEach(platform => {
+            platform.voxels = createVoxelsForArea(platform, platform.x, platform.y, platform.width, platform.height);
+        });
+    }    
+
     function drawPlatforms() {
         platforms.forEach(platform => {
-            // Adjust platform position based on the camera
-            const adjustedX = (platform.x - camera.x) * camera.zoom + gameCanvas.width / 2;
-            const adjustedY = (platform.y - camera.y) * camera.zoom + gameCanvas.height / 2;
-            const adjustedWidth = platform.width * camera.zoom;
-            const adjustedHeight = platform.height * camera.zoom;
+            platform.voxels.forEach(voxel => {
+                const adjustedX = (voxel.x - camera.x) * camera.zoom + gameCanvas.width / 2;
+                const adjustedY = (voxel.y - camera.y) * camera.zoom + gameCanvas.height / 2;
+                const adjustedWidth = voxel.width * camera.zoom;
+                const adjustedHeight = voxel.height * camera.zoom;
     
-            context.fillStyle = platform.color || 'green';
-            context.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
+                if (!voxel.intact) {
+                    // Apply physics to broken voxels
+                    if (voxel.gravity) {
+                        voxel.velocityY += gravity; // Example gravity effect, adjust as needed
+                    }
+    
+                    voxel.velocityX += (Math.random() - 0.5) * 0.2;
+                    voxel.velocityY += (Math.random() - 0.5) * 0.2;
+    
+                    voxel.x += voxel.velocityX;
+                    voxel.y += voxel.velocityY;
+    
+                    checkVoxelCollision(voxel, platform);
+    
+                    context.fillStyle = 'orange'; // Visual distinction for broken voxels
+                } else {
+                    context.fillStyle = platform.color || 'green';
+                }
+                context.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
+            });
         });
-    }
-
+    }    
+    
     function checkPlatformCollision(player) {
         player.onGround = false;
-        const baseDampingFactor = 0.8; // Base damping factor
+        const baseDampingFactor = 0.8;
+        const breakVelocityThreshold = 10;
     
-        // Check collision with platforms
         platforms.forEach(platform => {
-            if (player.x < platform.x + platform.width &&
-                player.x + player.width > platform.x) {
-                // Check if the player is touching the top of the platform
-                if (player.y + player.height >= platform.y &&
-                    player.y < platform.y) {
-                    if (player.knockbackActive) {
-                        player.y = platform.y - player.height;
-                        player.bounceCount = (player.bounceCount || 0) + 1; // Increment bounce count
-                        const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
-                        player.velocityY = -Math.abs(player.velocityY) / dampingFactor; // Bounce off the platform with reduced speed
-                        createSmokeVfx(player, "bottom", 50);
+            platform.voxels.forEach(voxel => {
+                if (player.x < voxel.x + voxel.width && player.x + player.width > voxel.x) {
+                    // Check if the player is touching the top of the voxel
+                    if (player.y + player.height >= voxel.y && player.y < voxel.y) {
+                        if (player.knockbackActive) {
+                            player.y = voxel.y - player.height;
+                            player.bounceCount = (player.bounceCount || 0) + 1;
+                            const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1);
+                            player.velocityY = -Math.abs(player.velocityY) / dampingFactor;
+                            createSmokeVfx(player, "bottom", 50);
+                            audioManager.playRandomHitSound();
+    
+                            // Check if the player hit with enough force to break the voxel
+                            if (Math.abs(player.velocityY) > breakVelocityThreshold && voxel.intact == true) {
+                                voxel.intact = false;
+                                breakVoxel(voxel, player);
+                            }
+                        } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the voxel
+                            player.y = voxel.y - player.height;
+                            player.velocityY = 0;
+                            player.onGround = true;
+                            player.bounceCount = 0;
+                        }
+                    }
+                    // Check if the player is touching the bottom of the voxel
+                    if (player.knockbackActive && player.y <= voxel.y + voxel.height &&
+                        player.y + player.height > voxel.y + voxel.height && player.velocityY < 0) { // Ensure the player is moving upwards
+                        player.bounceCount = (player.bounceCount || 0) + 1;
+                        const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1);
+                        player.velocityY = Math.abs(player.velocityY) / dampingFactor;
+                        createSmokeVfx(player, "top", 50);
                         audioManager.playRandomHitSound();
-                    } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the platform
-                        player.y = platform.y - player.height;
-                        player.velocityY = 0;
-                        player.onGround = true;
-                        player.bounceCount = 0; // Reset bounce count when player lands
                     }
                 }
-                // Check if the player is touching the bottom of the platform
-                if (player.knockbackActive && player.y <= platform.y + platform.height &&
-                    player.y + player.height > platform.y + platform.height &&
-                    player.velocityY < 0) { // Ensure the player is moving upwards
-                    player.bounceCount = (player.bounceCount || 0) + 1; // Increment bounce count
-                    const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
-                    player.velocityY = Math.abs(player.velocityY) / dampingFactor; // Bounce off the platform with reduced speed
-                    createSmokeVfx(player, "top", 50);
-                    audioManager.playRandomHitSound();
-                }
-            }
+            });
         });
-    
-        // Check collision with other players only if not bouncing
-        
-        // if (!player.knockbackActive) {
-        //     const otherPlayer = player === player1 ? player2 : player1;
-        //     if (player.x < otherPlayer.x + otherPlayer.width &&
-        //         player.x + player.width > otherPlayer.x) {
-        //         // Check if the player is touching the top of the other player
-        //         if (player.y + player.height >= otherPlayer.y &&
-        //             player.y < otherPlayer.y) {
-        //             if (player.knockbackActive) {
-        //                 player.y = otherPlayer.y - player.height;
-        //                 player.bounceCount = (player.bounceCount || 0) + 1; // Increment bounce count
-        //                 const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
-        //                 player.velocityY = -Math.abs(player.velocityY) / dampingFactor; // Bounce off the other player with reduced speed
-        //                 createSmokeVfx(player, "bottom", 50);
-        //             } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the other player
-        //                 player.y = otherPlayer.y - player.height;
-        //                 player.velocityY = 0;
-        //                 player.onGround = true;
-        //                 player.bounceCount = 0; // Reset bounce count when player lands
-        //             }
-        //         }
-        //         // Check if the player is touching the bottom of the other player
-        //         if (player.knockbackActive && player.y <= otherPlayer.y + otherPlayer.height &&
-        //             player.y + player.height > otherPlayer.y + otherPlayer.height &&
-        //             player.velocityY < 0) { // Ensure the player is moving upwards
-        //             player.bounceCount = (player.bounceCount || 0) + 1; // Increment bounce count
-        //             const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1); // Increase damping factor with each bounce
-        //             player.velocityY = Math.abs(player.velocityY) / dampingFactor; // Bounce off the other player with reduced speed
-        //             createSmokeVfx(player, "top", 50);
-        //         }
-        //     }
-        // }
-    
-        // Ensure the player doesn't bounce if not colliding with any platform or player
+        // Ensure the player doesn't bounce if not colliding with any platform
         if (!player.onGround && !player.knockbackActive) {
             player.bounceCount = 0;
         }
     }
     
-
+    function createVoxelsForArea(platform, startX, startY, width, height) {
+        const voxels = [];
+        for (let x = startX; x < startX + width; x += VOXEL_SIZE) {
+            for (let y = startY; y < startY + height; y += VOXEL_SIZE) {
+                voxels.push({ x, y, width: VOXEL_SIZE, height: VOXEL_SIZE, intact: true, velocityX: 0, velocityY: 0, gravity: true});
+            }
+        }
+        return voxels;
+    }
+    
+    function breakVoxel(voxel, player) {
+        voxel.intact = false;
+        const impactDirectionX = player.velocityX;
+        const impactDirectionY = player.velocityY;
+        const explosionForceX = -impactDirectionX * 0.5;
+        const explosionForceY = -impactDirectionY * 0.5;
+        applyPhysicsToPiece(voxel, explosionForceX, explosionForceY);
+        console.log("Voxel broken at point:", voxel.x, voxel.y, "with forces:", explosionForceX, explosionForceY);
+    }
+    
+    function applyPhysicsToPiece(piece, forceX, forceY) {
+        piece.velocityX = forceX;
+        piece.velocityY = forceY;
+        piece.gravity = true;
+        console.log("Applied physics to piece:", piece);
+    }
+    
+    function checkVoxelCollision(voxel, platform) {
+        if (voxel.x < platform.x + platform.width && voxel.x + voxel.width > platform.x &&
+            voxel.y < platform.y + platform.height && voxel.y + voxel.height > platform.y) {
+            voxel.velocityX = 0;
+            voxel.velocityY = -gravity;
+            console.log("Voxel collided with platform at point:", voxel.x, voxel.y);
+        }
+    }    
+    
     function drawUI() {
         context.fillStyle = 'white';
         context.font = '20px Arial';
@@ -1294,7 +1324,7 @@ function startGame(selectedMap) {
         // Apply knockback in the opposite direction
         opponent.velocityX = normalizedDirectionX * knockbackForce;
         opponent.velocityY = (normalizedDirectionY * knockbackForce) + knockbackForce;
-        console.log(normalizedDirectionX * knockbackForce, normalizedDirectionY * knockbackForce)
+        // console.log(normalizedDirectionX * knockbackForce, normalizedDirectionY * knockbackForce)
         opponent.knockbackActive = true;
         opponent.disableControls = true;
     
