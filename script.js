@@ -814,7 +814,7 @@ function startGame(selectedMap) {
                     voxel.x += voxel.velocityX;
                     voxel.y += voxel.velocityY;
     
-                    checkVoxelCollision(voxel, platform);
+                    checkVoxelCollision(voxel);
     
                     context.fillStyle = 'green'; // Visual distinction for broken voxels
                 } else {
@@ -832,7 +832,7 @@ function startGame(selectedMap) {
     
         platforms.forEach(platform => {
             platform.voxels.forEach(voxel => {
-                if (player.x < voxel.x + voxel.width && player.x + player.width > voxel.x) {
+                if (player.x < voxel.x + voxel.width && player.x + player.width > voxel.x && voxel.intact) {
                     // Check if the player is touching the top of the voxel
                     if (player.y + player.height >= voxel.y && player.y < voxel.y) {
                         if (player.knockbackActive) {
@@ -844,7 +844,7 @@ function startGame(selectedMap) {
                             audioManager.playRandomHitSound();
     
                             // Check if the player hit with enough force to break the voxel
-                            if (Math.abs(player.velocityY) > breakVelocityThreshold && voxel.intact == true) {
+                            if (Math.abs(player.velocityY) > breakVelocityThreshold && voxel.intact) {
                                 voxel.intact = false;
                                 breakVoxel(voxel, player);
                             }
@@ -905,13 +905,16 @@ function startGame(selectedMap) {
         console.log("Applied physics to piece:", piece);
     }
     
-    function checkVoxelCollision(voxel, platform) {
-        if (voxel.x < platform.x + platform.width && voxel.x + voxel.width > platform.x &&
-            voxel.y < platform.y + platform.height && voxel.y + voxel.height > platform.y) {
-            voxel.velocityX = 0;
-            voxel.velocityY = -gravity;
-            // console.log("Voxel collided with platform at point:", voxel.x, voxel.y);
-        }
+    function checkVoxelCollision(voxel) {
+        platforms.forEach(platform => {
+            if (voxel.x < platform.x + platform.width && voxel.x + voxel.width > platform.x &&
+                voxel.y < platform.y + platform.height && voxel.y + voxel.height > platform.y) {
+                voxel.velocityX = 0;
+                voxel.velocityY = -0.1; // Example gravity effect, adjust as needed
+                voxel.intact = false; // Ensure voxel is marked as broken
+                console.log("Voxel collided with platform at point:", voxel.x, voxel.y);
+            }
+        });
     }    
     
     function drawUI() {
