@@ -359,8 +359,20 @@ document.getElementById('settings-button').addEventListener('click', () => {
     document.getElementById('settings-menu').classList.remove('hidden');
 });
 
-document.getElementById('back-button').addEventListener('click', () => {
+document.getElementById('credits-button').addEventListener('click', () => {
+    document.getElementById('main-menu').classList.add('hidden');
+    document.getElementById('main-menu').classList.remove('flex');
+    document.getElementById('credits-menu').classList.remove('hidden');
+});
+
+document.getElementById('settings-back-button').addEventListener('click', () => {
     document.getElementById('settings-menu').classList.add('hidden');
+    document.getElementById('main-menu').classList.remove('hidden');
+    document.getElementById('main-menu').classList.add('flex');
+});
+
+document.getElementById('credits-back-button').addEventListener('click', () => {
+    document.getElementById('credits-menu').classList.add('hidden');
     document.getElementById('main-menu').classList.remove('hidden');
     document.getElementById('main-menu').classList.add('flex');
 });
