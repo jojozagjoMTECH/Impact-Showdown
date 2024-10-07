@@ -116,6 +116,11 @@ class AudioManager {
         for (let i = 1; i <= 5; i++) {
             this.hitSounds.push(new Audio(`Sounds/HitSounds/${i}.mp3`));
         }
+
+        this.ImpactSounds = [];
+        for (let i = 1; i <= 1; i++) {
+            this.ImpactSounds.push(new Audio(`Sounds/ImpactSounds/${i}.mp3`));
+        }
     }
 
     playBackgroundMusic(name) {
@@ -155,6 +160,13 @@ class AudioManager {
     playRandomHitSound() {
         const randomIndex = Math.floor(Math.random() * this.hitSounds.length);
         const randomHitSound = this.hitSounds[randomIndex];
+        randomHitSound.currentTime = 0;
+        randomHitSound.play();
+    }
+
+    playRandomImpactSound() {
+        const randomIndex = Math.floor(Math.random() * this.ImpactSounds.length);
+        const randomHitSound = this.ImpactSounds[randomIndex];
         randomHitSound.currentTime = 0;
         randomHitSound.play();
     }
