@@ -57,6 +57,7 @@ let player2 = {
     },
     percentage: 0,
     knockbackTime: 0,
+    knockbackFriction: false,
     ultimateCharge: 0,
     ultimateReady: false,
     character: 0, // Will be updated based on selected character
@@ -792,8 +793,8 @@ function startGame(selectedMap) {
         platforms.forEach(platform => {
             platform.voxels = createVoxelsForArea(platform, platform.x, platform.y, platform.width, platform.height);
         });
-    }    
-
+    }
+    
     function drawPlatforms() {
         platforms.forEach(platform => {
             platform.voxels.forEach(voxel => {
@@ -803,104 +804,86 @@ function startGame(selectedMap) {
                 const adjustedHeight = voxel.height * camera.zoom;
     
                 if (!voxel.intact) {
-                    // Apply physics to broken voxels
-                    if (voxel.gravity) {
-                        voxel.velocityY += gravity / 2; // Example gravity effect, adjust as needed
-                    }
+                    // Apply rigid body physics to broken voxels
+                    applyRigidBodyPhysics(voxel);
     
-                    voxel.velocityX += (Math.random() - 0.5) * 0.2;
-                    voxel.velocityY += (Math.random() - 0.5) * 0.2;
+                    checkVoxelCollisionWithPlatforms(voxel);
+                    checkVoxelCollisionWithOtherVoxels(voxel);
     
-                    voxel.x += voxel.velocityX;
-                    voxel.y += voxel.velocityY;
-    
-                    checkVoxelCollision(voxel);
-    
-                    context.fillStyle = 'green'; // Visual distinction for broken voxels
+                    context.save();
+                    context.translate(adjustedX + adjustedWidth / 2, adjustedY + adjustedHeight / 2);
+                    context.rotate(voxel.rotation);
+                    context.fillStyle = 'darkgreen'; // Visual distinction for broken voxels
+                    context.fillRect(-adjustedWidth / 2, -adjustedHeight / 2, adjustedWidth, adjustedHeight);
+                    context.restore();
                 } else {
                     context.fillStyle = platform.color || 'green';
+                    context.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
                 }
-                context.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
             });
         });
-    }    
+    }
     
     function checkPlatformCollision(player) {
         player.onGround = false;
         const baseDampingFactor = 0.8;
-        const breakVelocityThreshold = 20;
-        const fullBreakVelocityThreshold = 100; // Set this to the desired threshold for breaking the entire platform
-        const breakRadius = 50; // Adjust this for the area around the impact point to be affected
+        const breakVelocityThreshold = 10;
+        const fullBreakVelocityThreshold = 15;
+        const breakRadius = 10;
     
         platforms.forEach(platform => {
-            if (Math.abs(player.velocityY) > fullBreakVelocityThreshold) {
-                // Break the entire platform
-                platform.voxels.forEach(voxel => {
-                    if (voxel.intact) {
-                        voxel.intact = false;
-                        breakVoxel(voxel, player, breakRadius);
-                    }
-                });
-                console.log("Entire platform broken due to high velocity impact.");
-            } else {
-                platform.voxels.forEach(voxel => {
-                    if (player.x < voxel.x + voxel.width && player.x + player.width > voxel.x && voxel.intact) {
-                        // Check if the player is touching the top of the voxel
-                        if (player.y + player.height >= voxel.y && player.y < voxel.y + voxel.height / 2) {
-                            if (player.knockbackActive) {
-                                player.y = voxel.y - player.height;
-                                player.bounceCount = (player.bounceCount || 0) + 1;
-                                const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1);
-                                player.velocityY = -Math.abs(player.velocityY) / dampingFactor;
-                                createSmokeVfx(player, "bottom", 50);
-                                audioManager.playRandomHitSound();
-    
-                                // Check if the player hit with enough force to break the voxel
-                                if (Math.abs(player.velocityY) > breakVelocityThreshold) {
-                                    voxel.intact = false;
-                                    breakVoxel(voxel, player, breakRadius);
-                                }
-                            } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the voxel
-                                player.y = voxel.y - player.height;
-                                player.velocityY = 0;
-                                player.onGround = true;
-                                player.bounceCount = 0;
-                            }
-                        }
-                        // Check if the player is touching the bottom of the voxel
-                        if (player.knockbackActive && player.y <= voxel.y + voxel.height &&
-                            player.y + player.height > voxel.y + voxel.height / 2 && player.velocityY < 0) { // Ensure the player is moving upwards
+            platform.voxels.forEach(voxel => {
+                if (player.x < voxel.x + voxel.width && player.x + player.width > voxel.x && voxel.intact) {
+                    // Check if the player is touching the top of the voxel
+                    if (player.y + player.height >= voxel.y && player.y + player.height <= voxel.y + voxel.height) {
+                        if (player.knockbackActive) {
+                            player.y = voxel.y - player.height - 0.4;
                             player.bounceCount = (player.bounceCount || 0) + 1;
                             const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1);
-                            player.velocityY = Math.abs(player.velocityY) / dampingFactor;
-                            createSmokeVfx(player, "top", 50);
+                            player.velocityY = -Math.abs(player.velocityY) / dampingFactor;
+                            createSmokeVfx(player, "bottom", 50);
                             audioManager.playRandomHitSound();
     
+                            // Check if the player hit with enough force to break the voxel
                             if (Math.abs(player.velocityY) > breakVelocityThreshold) {
                                 voxel.intact = false;
                                 breakVoxel(voxel, player, breakRadius);
+                            } else if(Math.abs(player.velocityY) > fullBreakVelocityThreshold) {
+                                voxel.intact = false;
+                                breakVoxel(voxel, player, breakRadius * 3);
                             }
+                        } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the voxel
+                            player.y = voxel.y - player.height;
+                            player.velocityY = 0;
+                            player.onGround = true;
+                            player.bounceCount = 0;
                         }
                     }
-                });
-            }
+                    // Check if the player is touching the bottom of the voxel
+                    if (player.knockbackActive && player.y <= voxel.y + voxel.height &&
+                        player.y + player.height > voxel.y && player.velocityY < 0) { // Ensure the player is moving upwards
+                        player.bounceCount = (player.bounceCount || 0) + 1;
+                        const dampingFactor = baseDampingFactor + (player.bounceCount * 0.1);
+                        player.velocityY = Math.abs(player.velocityY) / dampingFactor;
+                        createSmokeVfx(player, "top", 50);
+                        audioManager.playRandomHitSound();
+    
+                        if (Math.abs(player.velocityY) > breakVelocityThreshold) {
+                            voxel.intact = false;
+                            breakVoxel(voxel, player, breakRadius);
+                        } else if(Math.abs(player.velocityY) > fullBreakVelocityThreshold) {
+                            voxel.intact = false;
+                            breakVoxel(voxel, player, breakRadius * 3);
+                        }
+                    }
+                }
+            });
         });
         // Ensure the player doesn't bounce if not colliding with any platform
         if (!player.onGround && !player.knockbackActive) {
             player.bounceCount = 0;
         }
     }
-    
-    function getNextVoxelBelow(player, platform) {
-        return platform.voxels.find(voxel => player.x < voxel.x + voxel.width &&
-            player.x + player.width > voxel.x && player.y + player.height < voxel.y);
-    }
-    
-    function getNextVoxelAbove(player, platform) {
-        return platform.voxels.find(voxel => player.x < voxel.x + voxel.width &&
-            player.x + player.width > voxel.x && player.y > voxel.y + voxel.height);
-    }
-    
     
     function createVoxelsForArea(platform, startX, startY, width, height) {
         const voxels = [];
@@ -918,8 +901,8 @@ function startGame(selectedMap) {
         const impactDirectionY = player.velocityY;
     
         // Calculate the explosion force for the broken voxel
-        const explosionForceX = impactDirectionX * 2; // Adjust multiplier as needed
-        const explosionForceY = impactDirectionY * 2; // Adjust multiplier as needed
+        const explosionForceX = impactDirectionX * 1; // Adjust multiplier as needed
+        const explosionForceY = impactDirectionY * 1; // Adjust multiplier as needed
     
         applyPhysicsToPiece(voxel, explosionForceX, explosionForceY);
         console.log("Voxel broken at point:", voxel.x, voxel.y, "with forces:", explosionForceX, explosionForceY);
@@ -943,42 +926,102 @@ function startGame(selectedMap) {
         });
     }
     
+    function applyRigidBodyPhysics(voxel) {
+        if (voxel.gravity) {
+            voxel.velocityY += gravity;
+        }
+    
+        voxel.velocityX *= friction;
+        voxel.velocityY *= friction;
+    
+        voxel.x += voxel.velocityX;
+        voxel.y += voxel.velocityY;
+    
+        voxel.rotation = (voxel.rotation || 0) + voxel.angularVelocity;
+        voxel.angularVelocity *= friction;
+    
+        // if (Math.abs(voxel.velocityY) < 0.5) {
+        //     voxel.velocityY = 0;
+        // }
+        // if (Math.abs(voxel.velocityX) < 0.5) {
+        //     voxel.velocityX = 0;
+        // }
+    
+        // Check collision with the bottom of the canvas
+        if (voxel.y + voxel.height > gameCanvas.height) {
+            voxel.y = gameCanvas.height - voxel.height;
+            voxel.velocityY = -gravity;
+            voxel.angularVelocity = 0;
+        }
+    }
+    
+    function checkVoxelCollisionWithPlatforms(voxel) {
+        platforms.forEach(platform => {
+            platform.voxels.forEach(platformVoxel => {
+                if (voxel !== platformVoxel && areVoxelsColliding(voxel, platformVoxel)) {
+                    resolveRigidBodyCollision(voxel, platformVoxel);
+                }
+            });
+        });
+    }
+    
+    function checkVoxelCollisionWithOtherVoxels(voxel) {
+        platforms.forEach(platform => {
+            platform.voxels.forEach(otherVoxel => {
+                if (voxel !== otherVoxel && areVoxelsColliding(voxel, otherVoxel)) {
+                    resolveRigidBodyCollision(voxel, otherVoxel);
+                }
+            });
+        });
+    }
+    
+    function areVoxelsColliding(voxel1, voxel2) {
+        return voxel1.x < voxel2.x + voxel2.width &&
+               voxel1.x + voxel1.width > voxel2.x &&
+               voxel1.y < voxel2.y + voxel2.height &&
+               voxel1.y + voxel1.height > voxel2.y;
+    }
+    
+    function resolveRigidBodyCollision(voxel1, voxel2) {
+        const overlapX = (voxel1.x + voxel1.width / 2) - (voxel2.x + voxel2.width / 2);
+        const overlapY = (voxel1.y + voxel1.height / 2) - (voxel2.y + voxel2.height / 2);
+
+        if (Math.abs(overlapX) > Math.abs(overlapY)) {
+            if (overlapX > 0) {
+                voxel1.x = voxel2.x + voxel2.width;
+            } else {
+                voxel1.x = voxel2.x - voxel1.width;
+            }
+            voxel1.velocityX = -gravity;
+        } else {
+            if (overlapY > 0) {
+                voxel1.y = voxel2.y + voxel2.height;
+            } else {
+                voxel1.y = voxel2.y - voxel1.height;
+            }
+            voxel1.velocityY = -gravity;
+        }
+    
+        // Exchange momentum
+        const tempVelocityX = voxel1.velocityX;
+        voxel1.velocityX = voxel2.velocityX;
+        voxel2.velocityX = tempVelocityX;
+    
+        const tempVelocityY = voxel1.velocityY;
+        voxel1.velocityY = voxel2.velocityY;
+        voxel2.velocityY = tempVelocityY;
+    
+        // voxel1.rotation += Math.random() * 0.1;
+        // voxel2.rotation -= Math.random() * 0.1;
+    }
+    
     function applyPhysicsToPiece(piece, forceX, forceY) {
         piece.velocityX = forceX;
         piece.velocityY = forceY;
+        piece.angularVelocity = (Math.random() - 0.5) * 0.1;
         piece.gravity = true;
         console.log("Applied physics to piece:", piece);
     }
-    
-    function checkVoxelCollision(voxel) {
-        platforms.forEach(platform => {
-            if (voxel.x < platform.x + platform.width && voxel.x + voxel.width > platform.x &&
-                voxel.y < platform.y + platform.height && voxel.y + voxel.height > platform.y) {
-                voxel.velocityX = 0;
-                voxel.velocityY = -gravity; // Example gravity effect, adjust as needed
-                voxel.intact = false; // Ensure voxel is marked as broken
-    
-                // Start a timer to reset voxel's state if it hasn't moved for 5 seconds
-                if (!voxel.movementTimer) {
-                    voxel.movementTimer = setTimeout(() => {
-                        if (voxel.velocityX === 0 && voxel.velocityY === 0) {
-                            voxel.intact = true;
-                            voxel.broken = false;
-                            console.log("Voxel became intact again:", voxel.x, voxel.y);
-                        }
-                    }, 5000); // 5 seconds
-                }
-    
-                console.log("Voxel collided with platform at point:", voxel.x, voxel.y);
-            } else {
-                // Clear the timer if the voxel is moving again
-                if (voxel.movementTimer) {
-                    clearTimeout(voxel.movementTimer);
-                    voxel.movementTimer = null;
-                }
-            }
-        });
-    }    
     
     function drawUI() {
         context.fillStyle = 'white';
