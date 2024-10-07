@@ -176,7 +176,6 @@ const audioManager = new AudioManager();
 // audioManager.playSound('hit');
 
 let gameLoopRunning = false;
-const VOXEL_SIZE = 10; // Define voxel size
 const gravity = 0.4;
 const friction = 0.9;
 const gameCanvas = document.getElementById('game-canvas');
@@ -326,6 +325,8 @@ const characters = [
 let showHitboxes = false;
 let showImpactFrames = true;
 let FixedCamera = false;
+let Destruction = true; // Define voxel size
+let VOXEL_SIZE = 10; // Define voxel size
 
 document.getElementById('start-button').addEventListener('click', () => {
     document.getElementById('intro-animation').classList.add('hidden');
@@ -362,6 +363,31 @@ document.getElementById('toggle-impactframes').addEventListener('change', (event
 
 document.getElementById('toggle-camera').addEventListener('change', (event) => {
     FixedCamera = event.target.checked;
+});
+
+document.getElementById('toggle-destruction').addEventListener('change', (event) => {
+    const destructionEnabled = event.target.checked;
+    const voxelSizeInput = document.getElementById('voxel-size');
+    const voxelSizeLabel = document.getElementById('voxel-size-label');
+    
+    voxelSizeInput.style.display = destructionEnabled ? 'block' : 'none';
+    voxelSizeLabel.style.display = destructionEnabled ? 'block' : 'none';
+    
+    Destruction = destructionEnabled;
+});
+
+document.getElementById('voxel-size').addEventListener('input', (event) => {
+    VOXEL_SIZE = parseInt(event.target.value, 10) || 10; // Default to 10 if the value is invalid
+});
+
+// Initialize the voxel size input display based on the destruction toggle state
+document.addEventListener('DOMContentLoaded', () => {
+    const destructionEnabled = document.getElementById('toggle-destruction').checked;
+    const voxelSizeInput = document.getElementById('voxel-size');
+    const voxelSizeLabel = document.getElementById('voxel-size-label');
+    
+    voxelSizeInput.style.display = destructionEnabled ? 'block' : 'none';
+    voxelSizeLabel.style.display = destructionEnabled ? 'block' : 'none';
 });
 
 
@@ -797,7 +823,8 @@ function startGame(selectedMap) {
     
     function drawPlatforms() {
         platforms.forEach(platform => {
-            platform.voxels.forEach(voxel => {
+            for (let i = platform.voxels.length - 1; i >= 0; i--) {
+                const voxel = platform.voxels[i];
                 const adjustedX = (voxel.x - camera.x) * camera.zoom + gameCanvas.width / 2;
                 const adjustedY = (voxel.y - camera.y) * camera.zoom + gameCanvas.height / 2;
                 const adjustedWidth = voxel.width * camera.zoom;
@@ -810,9 +837,36 @@ function startGame(selectedMap) {
                     checkVoxelCollisionWithPlatforms(voxel);
                     checkVoxelCollisionWithOtherVoxels(voxel);
     
+                    // Remove voxel if it falls out of the screen
+                    if (voxel.y > gameCanvas.height) {
+                        platform.voxels.splice(i, 1);
+                        continue;
+                    }
+    
+                    // Initialize fadeDelay and opacity if not set
+                    if (!voxel.hasOwnProperty('fadeDelay')) {
+                        voxel.fadeDelay = 180; // 3 seconds at 60 FPS
+                        voxel.opacity = 1.0;
+                    }
+    
+                    // Start fading after delay
+                    if (voxel.fadeDelay <= 0) {
+                        voxel.opacity -= 0.01; // Adjust the fade speed as needed
+                        console.log(`Voxel at (${voxel.x}, ${voxel.y}) fading. Opacity: ${voxel.opacity}`);
+                        if (voxel.opacity <= 0) {
+                            platform.voxels.splice(i, 1);
+                            console.log(`Voxel at (${voxel.x}, ${voxel.y}) removed.`);
+                            continue;
+                        }
+                    } else {
+                        voxel.fadeDelay -= 1; // Decrease delay count
+                        console.log(`Voxel at (${voxel.x}, ${voxel.y}) delaying fade. FadeDelay: ${voxel.fadeDelay}`);
+                    }
+    
                     context.save();
                     context.translate(adjustedX + adjustedWidth / 2, adjustedY + adjustedHeight / 2);
                     context.rotate(voxel.rotation);
+                    context.globalAlpha = voxel.opacity; // Set opacity
                     context.fillStyle = 'darkgreen'; // Visual distinction for broken voxels
                     context.fillRect(-adjustedWidth / 2, -adjustedHeight / 2, adjustedWidth, adjustedHeight);
                     context.restore();
@@ -820,15 +874,15 @@ function startGame(selectedMap) {
                     context.fillStyle = platform.color || 'green';
                     context.fillRect(adjustedX, adjustedY, adjustedWidth, adjustedHeight);
                 }
-            });
+            }
         });
-    }
+    }    
     
     function checkPlatformCollision(player) {
         player.onGround = false;
         const baseDampingFactor = 0.8;
-        const breakVelocityThreshold = 10;
-        const fullBreakVelocityThreshold = 15;
+        const breakVelocityThreshold = 11;
+        const fullBreakVelocityThreshold = 17;
         const breakRadius = 10;
     
         platforms.forEach(platform => {
@@ -847,11 +901,8 @@ function startGame(selectedMap) {
                             // Check if the player hit with enough force to break the voxel
                             if (Math.abs(player.velocityY) > breakVelocityThreshold) {
                                 voxel.intact = false;
-                                breakVoxel(voxel, player, breakRadius);
-                            } else if(Math.abs(player.velocityY) > fullBreakVelocityThreshold) {
-                                voxel.intact = false;
-                                breakVoxel(voxel, player, breakRadius * 3);
-                            }
+                                breakVoxel(voxel, player, breakRadius); // Breaks everything within the specified radius
+                            }                            
                         } else if (player.velocityY >= 0) { // Ensure the player is falling down onto the voxel
                             player.y = voxel.y - player.height;
                             player.velocityY = 0;
@@ -868,13 +919,13 @@ function startGame(selectedMap) {
                         createSmokeVfx(player, "top", 50);
                         audioManager.playRandomHitSound();
     
-                        if (Math.abs(player.velocityY) > breakVelocityThreshold) {
+                        if (Math.abs(player.velocityY) > fullBreakVelocityThreshold) {
                             voxel.intact = false;
-                            breakVoxel(voxel, player, breakRadius);
-                        } else if(Math.abs(player.velocityY) > fullBreakVelocityThreshold) {
+                            breakVoxel(voxel, player, 50); // Breaks everything within a large radius
+                        } else if (Math.abs(player.velocityY) > breakVelocityThreshold) {
                             voxel.intact = false;
-                            breakVoxel(voxel, player, breakRadius * 3);
-                        }
+                            breakVoxel(voxel, player, breakRadius); // Breaks everything within the specified radius
+                        }                        
                     }
                 }
             });
@@ -896,34 +947,36 @@ function startGame(selectedMap) {
     }
     
     function breakVoxel(voxel, player, radius) {
-        voxel.intact = false;
-        const impactDirectionX = player.velocityX;
-        const impactDirectionY = player.velocityY;
-    
-        // Calculate the explosion force for the broken voxel
-        const explosionForceX = impactDirectionX * 1; // Adjust multiplier as needed
-        const explosionForceY = impactDirectionY * 1; // Adjust multiplier as needed
-    
-        applyPhysicsToPiece(voxel, explosionForceX, explosionForceY);
-        console.log("Voxel broken at point:", voxel.x, voxel.y, "with forces:", explosionForceX, explosionForceY);
-    
-        // Break voxels in the specified radius
-        breakNeighborVoxels(voxel, player, radius);
-    }
-    
-    function breakNeighborVoxels(centerVoxel, player, radius) {
-        platforms.forEach(platform => {
-            platform.voxels.forEach(voxel => {
-                const distance = Math.hypot(voxel.x - centerVoxel.x, voxel.y - centerVoxel.y);
-                if (distance <= radius && voxel.intact) {
-                    voxel.intact = false;
-                    const explosionForceX = (voxel.x - centerVoxel.x) * 0.1;
-                    const explosionForceY = (voxel.y - centerVoxel.y) * 0.1;
-                    applyPhysicsToPiece(voxel, explosionForceX, explosionForceY);
-                    console.log("Neighbor voxel broken at point:", voxel.x, voxel.y, "with forces:", explosionForceX, explosionForceY);
-                }
+        if (Destruction) {
+            voxel.intact = false;
+            const impactDirectionX = player.velocityX;
+            const impactDirectionY = player.velocityY;
+        
+            // Calculate the explosion force for the broken voxel
+            const explosionForceX = impactDirectionX * 1; // Adjust multiplier as needed
+            const explosionForceY = impactDirectionY * 1; // Adjust multiplier as needed
+        
+            applyPhysicsToPiece(voxel, explosionForceX, explosionForceY);
+            console.log("Voxel broken at point:", voxel.x, voxel.y, "with forces:", explosionForceX, explosionForceY);
+        
+            // Break voxels in the specified radius
+            breakNeighborVoxels(voxel, player, radius);
+        }
+        
+        function breakNeighborVoxels(centerVoxel, player, radius) {
+            platforms.forEach(platform => {
+                platform.voxels.forEach(voxel => {
+                    const distance = Math.hypot(voxel.x - centerVoxel.x, voxel.y - centerVoxel.y);
+                    if (distance <= radius && voxel.intact) {
+                        voxel.intact = false;
+                        const explosionForceX = (voxel.x - centerVoxel.x) * 0.1;
+                        const explosionForceY = (voxel.y - centerVoxel.y) * 0.1;
+                        applyPhysicsToPiece(voxel, explosionForceX, explosionForceY);
+                        console.log("Neighbor voxel broken at point:", voxel.x, voxel.y, "with forces:", explosionForceX, explosionForceY);
+                    }
+                });
             });
-        });
+        }
     }
     
     function applyRigidBodyPhysics(voxel) {
@@ -948,11 +1001,11 @@ function startGame(selectedMap) {
         // }
     
         // Check collision with the bottom of the canvas
-        if (voxel.y + voxel.height > gameCanvas.height) {
-            voxel.y = gameCanvas.height - voxel.height;
-            voxel.velocityY = -gravity;
-            voxel.angularVelocity = 0;
-        }
+        // if (voxel.y + voxel.height > gameCanvas.height) {
+        //     voxel.y = gameCanvas.height - voxel.height;
+        //     voxel.velocityY = -gravity;
+        //     voxel.angularVelocity = 0;
+        // }
     }
     
     function checkVoxelCollisionWithPlatforms(voxel) {
@@ -1003,13 +1056,13 @@ function startGame(selectedMap) {
         }
     
         // Exchange momentum
-        const tempVelocityX = voxel1.velocityX;
-        voxel1.velocityX = voxel2.velocityX;
-        voxel2.velocityX = tempVelocityX;
+        // const tempVelocityX = voxel1.velocityX;
+        // voxel1.velocityX = voxel2.velocityX;
+        // voxel2.velocityX = tempVelocityX;
     
-        const tempVelocityY = voxel1.velocityY;
-        voxel1.velocityY = voxel2.velocityY;
-        voxel2.velocityY = tempVelocityY;
+        // const tempVelocityY = voxel1.velocityY;
+        // voxel1.velocityY = voxel2.velocityY;
+        // voxel2.velocityY = tempVelocityY;
     
         // voxel1.rotation += Math.random() * 0.1;
         // voxel2.rotation -= Math.random() * 0.1;
