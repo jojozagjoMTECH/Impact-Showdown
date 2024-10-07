@@ -331,6 +331,15 @@ const characters = [
         abilityName: 'Blue Shot',
         abilityDescription: 'A quick shot that shoots in the last dirrection the player was moving.'
     },
+    {
+        id: 3,
+        name: 'Shadow Knight',
+        color: 'rgb(90, 18, 90)',
+        ultimateName: 'Shadows Drakness',
+        ultimateDescription: 'NIL',
+        abilityName: 'NIL',
+        abilityDescription: 'NIL'
+    },
     // Add more characters here
 ];
 
@@ -579,39 +588,53 @@ function lerp(start, end, t) {
 
 const cameraFixedPostions = calculateMidpoint([player1, player2]);
 
-function updateCamera(camera, players, canvas, selectedMap) {
-    const midpoint = calculateMidpoint(players);
-    const maxDistance = calculateMaxDistance(players);
+function focusCameraOn(camera, target, canvas) {
+    const targetX = target.x + target.width / 2;
+    const targetY = target.y + target.height / 2;
 
-    // Default settings
-    let maxDistanceThreshold = 3000;
-    let minZoom = 0.5;
-    let maxZoom = 1.5;
-    let maxHeight = 800; // Maximum height the camera can go
+    camera.x = lerp(camera.x, targetX, 0.1);
+    camera.y = lerp(camera.y, targetY, 0.1);
+}
 
-    // Update camera settings based on the selected map
-    const mapSettings = maps[selectedMap];
-    if (mapSettings) {
-        const settings = mapSettings.find(item => item.maxDistanceThreshold !== undefined);
-        if (settings) {
-            maxDistanceThreshold = settings.maxDistanceThreshold;
-            minZoom = settings.minZoom;
-            maxZoom = settings.maxZoom;
-            maxHeight = settings.maxHeight || maxHeight; // Use map-specific max height if available
-        }
-    }
+let focusTarget = null;
 
-    const targetZoom = maxZoom - (maxDistance / maxDistanceThreshold) * (maxZoom - minZoom);
-
-    // Smoothly transition camera position
-    if (!FixedCamera) {
-        camera.x = lerp(camera.x, midpoint.x, 0.1);
-        camera.y = lerp(camera.y, Math.min(midpoint.y, maxHeight), 0.1); // Limit camera height
-        camera.zoom = lerp(camera.zoom, Math.max(minZoom, Math.min(maxZoom, targetZoom)), 0.1);
+function updateCamera(camera, players, canvas, selectedMap, focusTarget = null) {
+    if (focusTarget) {
+        focusCameraOn(camera, focusTarget, canvas);
     } else {
-        camera.x = cameraFixedPostions.x * 2;
-        camera.y = cameraFixedPostions.y * 2;
-        camera.zoom = 1;
+        const midpoint = calculateMidpoint(players);
+        const maxDistance = calculateMaxDistance(players);
+
+        // Default settings
+        let maxDistanceThreshold = 3000;
+        let minZoom = 0.5;
+        let maxZoom = 1.5;
+        let maxHeight = 800; // Maximum height the camera can go
+
+        // Update camera settings based on the selected map
+        const mapSettings = maps[selectedMap];
+        if (mapSettings) {
+            const settings = mapSettings.find(item => item.maxDistanceThreshold !== undefined);
+            if (settings) {
+                maxDistanceThreshold = settings.maxDistanceThreshold;
+                minZoom = settings.minZoom;
+                maxZoom = settings.maxZoom;
+                maxHeight = settings.maxHeight || maxHeight; // Use map-specific max height if available
+            }
+        }
+
+        const targetZoom = maxZoom - (maxDistance / maxDistanceThreshold) * (maxZoom - minZoom);
+
+        // Smoothly transition camera position
+        if (!FixedCamera) {
+            camera.x = lerp(camera.x, midpoint.x, 0.1);
+            camera.y = lerp(camera.y, Math.min(midpoint.y, maxHeight), 0.1); // Limit camera height
+            camera.zoom = lerp(camera.zoom, Math.max(minZoom, Math.min(maxZoom, targetZoom)), 0.1);
+        } else {
+            camera.x = cameraFixedPostions.x * 2;
+            camera.y = cameraFixedPostions.y * 2;
+            camera.zoom = 1;
+        }
     }
 }
 
@@ -670,8 +693,8 @@ function startGame(selectedMap) {
         drawBackground(context, selectedMap);
         updateBackground(selectedMap);
 
-        updateCamera(camera, [player1, player2], gameCanvas, selectedMap);
-        drawArrows(context, camera, [player1, player2], gameCanvas, 0);
+        updateCamera(camera, [player1, player2], gameCanvas, selectedMap, focusTarget);
+        drawArrows(context, camera, [player1, player2], gameCanvas, -100);
         
         drawPlatforms();
         updatePlayer(player1);
@@ -1189,14 +1212,14 @@ function startGame(selectedMap) {
             const hitbox = {
                 x: player.x - 10, // Adjust x position to center the hitbox
                 y: player.y - 10, // Adjust y position to center the hitbox
-                width: player.width + 100, // Increase width by 20 pixels
-                height: player.height + 100 // Increase height by 20 pixels
+                width: player.width + 50, // Increase width by 20 pixels
+                height: player.height + 50 // Increase height by 20 pixels
             };
     
             switch (player.character) {
                 case 1: // Red Fury's Ultimate
-                context.fillStyle = "red";
-                context.fillRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
+                    context.fillStyle = "red";
+                    context.fillRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
                     if (checkHit(hitbox, opponent)) {
                         playCutscene(player, opponent);
                     } else {
@@ -1206,6 +1229,16 @@ function startGame(selectedMap) {
                     break;
                 case 2: // Blue Blast's Ultimate
                     shootLaserBeam(player, opponent);
+                    break;
+                case 3: // Shadows Ultimate
+                    context.fillStyle = "red";
+                    context.fillRect(hitbox.x, hitbox.y, hitbox.width, hitbox.height);
+                    if (checkHit(hitbox, opponent)) {
+                        playCutscene(player, opponent);
+                    } else {
+                        player.ultimateReady = false
+                        player.ultimateCharge = 0;
+                    }
                     break;
                 // Add more cases for additional characters
                 default:
@@ -1225,23 +1258,21 @@ function startGame(selectedMap) {
             const screenX = (player.x - camera.x) * camera.zoom + gameCanvas.width / 2;
             const screenY = (player.y - camera.y) * camera.zoom + gameCanvas.height / 2; // Fixed calculation
 
-            // Display the ability name above the player's head and fade it out
-            let alpha = 1.0;
-            const fadeOutText = () => {
-                // Clear a larger area to avoid residual text
-                vfxContext.clearRect(screenX - 100, screenY - 100, 200, 50); 
-                vfxContext.fillStyle = `rgba(${player.color.r}, ${player.color.g}, ${player.color.b}, ${alpha})`;
-                vfxContext.font = '16px Arial';
-                vfxContext.textAlign = 'center'; // Center the text
-                vfxContext.fillText(player.abilityName, screenX, screenY - 30);
-                alpha -= 0.02;
-                if (alpha > 0) {
-                    requestAnimationFrame(fadeOutText);
-                }
-            };
-            fadeOutText();
+            // let alpha = 1.0;
+            // const fadeOutText = () => {
+            //     // Clear a larger area to avoid residual text
+            //     // vfxContext.clearRect(screenX - 100, screenY - 50, 200, 50); 
+            //     vfxContext.fillStyle = `rgba(${player.color.r}, ${player.color.g}, ${player.color.b}, ${alpha})`;
+            //     vfxContext.font = '16px Arial';
+            //     vfxContext.textAlign = 'center'; // Center the text
+            //     vfxContext.fillText(player.abilityName, screenX, screenY - 30);
+            //     alpha -= 0.02;
+            //     if (alpha > 0) {
+            //         requestAnimationFrame(fadeOutText);
+            //     }
+            // };
+            // fadeOutText();
 
-    
             switch (player.abilityName) {
                 case "Repel":
                     // Create a burst effect that grows and fades
@@ -1306,66 +1337,69 @@ function startGame(selectedMap) {
     
                     player.abilityCooldown = 10; // Set to desired cooldown value
                     break;
-                case "Blue Shot":
-                    // Determine the player's last direction
-                    let lastDirection = { x: 0, y: 0 };
-                    if (player.velocityX > 0) lastDirection.x = 1;
-                    else if (player.velocityX < 0) lastDirection.x = -1;
-                    if (player.velocityY > 0) lastDirection.y = 1;
-                    else if (player.velocityY < 0) lastDirection.y = -1;
-    
-                    // Set a default direction if the player isn't moving
-                    if (lastDirection.x === 0 && lastDirection.y === 0) {
-                        lastDirection = { x: 1, y: 0 }; // Default to moving right
-                    }
-    
-                    // Shoot a bullet in the direction the player was last moving
-                    const bulletSpeed = 10;
-                    const bullet = {
-                        x: player.x + player.width / 2,
-                        y: player.y + player.height / 2,
-                        vx: lastDirection.x * bulletSpeed,
-                        vy: lastDirection.y * bulletSpeed,
-                        radius: 5,
-                        color: 'blue'
-                    };
-    
-                    function animateBullet() {
-                        vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-                        bullet.x += bullet.vx;
-                        bullet.y += bullet.vy;
-    
-                        const bulletScreenX = (bullet.x - camera.x) * camera.zoom + vfxCanvas.width / 2;
-                        const bulletScreenY = (bullet.y - camera.y) * camera.zoom + vfxCanvas.height / 2;
-    
-                        vfxContext.fillStyle = bullet.color;
-                        vfxContext.beginPath();
-                        vfxContext.arc(bulletScreenX, bulletScreenY, bullet.radius * camera.zoom, 0, 2 * Math.PI);
-                        vfxContext.fill();
-    
-                        if (bullet.x < 0 || bullet.x > vfxCanvas.width || bullet.y < 0 || bullet.y > vfxCanvas.height) {
-                            vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height); // Clear the bullet
-                            return; // Stop animation if bullet goes out of bounds
+                    case "Blue Shot":
+                        // Determine the player's last direction
+                        let lastDirection = { x: 0, y: 0 };
+                        if (player.velocityX > 0) lastDirection.x = 1;
+                        else if (player.velocityX < 0) lastDirection.x = -1;
+                        if (player.velocityY > 0) lastDirection.y = 1;
+                        else if (player.velocityY < 0) lastDirection.y = -1;
+
+                        // Set a default direction if the player isn't moving
+                        if (lastDirection.x === 0 && lastDirection.y === 0) {
+                            lastDirection = { x: 1, y: 0 }; // Default to moving right
                         }
-    
-                        // Check if the bullet hits the opponent
-                        const opponentX = (opponent.x + opponent.width / 2 - camera.x) * camera.zoom + vfxCanvas.width / 2;
-                        const opponentY = (opponent.y + opponent.height / 2 - camera.y) * camera.zoom + vfxCanvas.height / 2;
-                        const distance = Math.sqrt(Math.pow(opponentX - bulletScreenX, 2) + Math.pow(opponentY - bulletScreenY, 2));
-    
-                        if (distance < bullet.radius * camera.zoom + opponent.width / 2 && !opponent.iFrames) {
-                            applyDamage(opponent, 1);
-                            applyKnockback(player, opponent);
-                            vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height); // Clear the bullet
-                            return; // Stop animation if bullet hits the opponent
+
+                        // Shoot a bullet in the direction the player was last moving
+                        const bulletSpeed = 10;
+                        const bullet = {
+                            x: player.x + player.width / 2,
+                            y: player.y + player.height / 2,
+                            vx: lastDirection.x * bulletSpeed,
+                            vy: lastDirection.y * bulletSpeed,
+                            radius: 5,
+                            color: 'blue'
+                        };
+
+                        function animateBullet() {
+                            // Update bullet position
+                            bullet.x += bullet.vx;
+                            bullet.y += bullet.vy;
+
+                            // Convert bullet position to screen coordinates
+                            const bulletScreenX = (bullet.x - camera.x) * camera.zoom + vfxCanvas.width / 2;
+                            const bulletScreenY = (bullet.y - camera.y) * camera.zoom + vfxCanvas.height / 2;
+
+                            // Clear and redraw the bullet
+                            vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                            vfxContext.fillStyle = bullet.color;
+                            vfxContext.beginPath();
+                            vfxContext.arc(bulletScreenX, bulletScreenY, bullet.radius * camera.zoom, 0, 2 * Math.PI);
+                            vfxContext.fill();
+
+                            // Check if the bullet is out of bounds
+                            if (bullet.x < 0 || bullet.x > gameCanvas.width || bullet.y < 0 || bullet.y > gameCanvas.height) {
+                                return; // Stop animation if bullet goes out of bounds
+                            }
+
+                            // Check if the bullet hits the opponent
+                            const opponentX = (opponent.x + opponent.width / 2 - camera.x) * camera.zoom + vfxCanvas.width / 2;
+                            const opponentY = (opponent.y + opponent.height / 2 - camera.y) * camera.zoom + vfxCanvas.height / 2;
+                            const distance = Math.sqrt(Math.pow(opponentX - bulletScreenX, 2) + Math.pow(opponentY - bulletScreenY, 2));
+
+                            if (distance < bullet.radius * camera.zoom + opponent.width / 2 && !opponent.iFrames) {
+                                applyDamage(opponent, 1);
+                                applyKnockback(player, opponent);
+                                return; // Stop animation if bullet hits the opponent
+                            }
+
+                            requestAnimationFrame(animateBullet);
                         }
-    
+
                         requestAnimationFrame(animateBullet);
-                    }
-                    requestAnimationFrame(animateBullet);
-    
-                    player.abilityCooldown = 5; // Set to desired cooldown value
-                    break;
+
+                        player.abilityCooldown = 5; // Set to desired cooldown value
+                        break;
                 // Add more cases for additional characters
                 default:
                     console.log('Unknown character ability');
@@ -1556,9 +1590,9 @@ function startGame(selectedMap) {
         const key = event.key.toUpperCase();
         keys[key] = true;
 
-        if (keys[player1.controls.ultimate] && player1.ultimateReady && !player1.disableControl) {
+        if (keys[player1.controls.ultimate] && player1.ultimateReady && !player1.disableControls) {
             useUltimate(player1);
-        } else if (keys[player2.controls.ultimate] && player2.ultimateReady && !player2.disableControl) {
+        } else if (keys[player2.controls.ultimate] && player2.ultimateReady && !player2.disableControls) {
             useUltimate(player2);
         } else if (keys[player1.controls.melee] && !player1.disableControls && !player1.MeleeActive) {
             useMelee(player1);
@@ -1566,9 +1600,9 @@ function startGame(selectedMap) {
         } else if (keys[player2.controls.melee] && !player2.disableControls && !player2.MeleeActive) {
             useMelee(player2);
             player2.MeleeActive = true;
-        } else if (keys[player1.controls.ability] && player1.abilityCooldown == 0 && !player1.disableControl) {
+        } else if (keys[player1.controls.ability] && player1.abilityCooldown == 0 && !player1.disableControls) {
             useAbility(player1);
-        } else if (keys[player2.controls.ability] && player2.abilityCooldown == 0 && !player2.disableControl) {
+        } else if (keys[player2.controls.ability] && player2.abilityCooldown == 0 && !player2.disableControls) {
             useAbility(player2);
         }
     });
@@ -1931,130 +1965,259 @@ function startGame(selectedMap) {
         console.log(player.character);
         
         if (player.character === 1) {
-            BattleMusic.pause()
-            cutsceneDuration = 13000;
+            BattleMusic.pause();
+            cutsceneDuration = 0;
             opponent.velocityY = -25;
-
+        
             async function teleportAround(player, opponent) {
                 let teleportElapsed = 0;
                 const teleportSpeedup = 1.1;
-                const teleportTime = 200; // Total time for teleportation in milliseconds
+                const teleportTime = 100; // Total time for teleportation in milliseconds
                 let teleportDuration = 300;
                 const minTeleportDuration = 30;
             
-                // applyImpactFrames(player, opponent, platforms, context, teleportTime, 100);
                 while (teleportElapsed < teleportTime) {
                     player.x = opponent.x + (Math.random() - 0.5) * 200; // random X around opponent
                     player.y = opponent.y + (Math.random() - 0.5) * 200; // random Y around opponent
-            
+        
                     await sleep(teleportDuration);
                     
-                    teleportElapsed = teleportElapsed + 1;
+                    teleportElapsed += 1;
                     teleportDuration = Math.max(teleportDuration / teleportSpeedup, minTeleportDuration);
-
-                    console.log(teleportSpeedup);
-
+        
                     player.disableControls = true;
                     opponent.disableControls = true;
-
-                    audioManager.playRandomHitSound()
-                    applyDamage(opponent, 0.1)
-                    opponent.percentage = Math.round(opponent.percentage * 10) / 10;
-            
-                    // console.log(`Elapsed: ${teleportElapsed}ms`);
-                }
-                console.log("Teleportation finished");
-            }            
-            
         
-            setTimeout(() => {              
+                    audioManager.playRandomHitSound();
+                    applyDamage(opponent, 0.1);
+                    opponent.percentage = Math.round(opponent.percentage * 10) / 10;
+                }
+            }
+        
+            const cutscene = async () => {
+                await new Promise(resolve => setTimeout(resolve, 300));
                 opponent.velocityY = 0;
                 opponent.ignoreGravity = true;
-                setTimeout(() => {              
-                    vfxContext.fillStyle = 'black';
-                    vfxContext.fillRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-                    vfxContext.fillStyle = 'white';
-                    vfxContext.font = '30px Arial';
-                    vfxContext.fillText('Red Fury Ultimate.', vfxCanvas.width / 2 - 100, vfxCanvas.height / 2);
-                    audioManager.playSound('CinematicBoom');
-                    setTimeout(() => {              
-                        vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-                        player.velocityY = -24;
-                        settings.minZoom = 2
-                        setTimeout(() => {
-                            player.velocityY = 0;
-                            player.ignoreGravity = true;
-                            setTimeout(() => {      
-                                vfxContext.fillStyle = 'black';
-                                vfxContext.fillRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-                                vfxContext.fillStyle = 'white';
-                                // vfxContext.globalCompositeOperation = 'difference';
-                                vfxContext.fillRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-                                // vfxContext.globalCompositeOperation = 'source-over';
-                                vfxContext.fillStyle = 'red';
-                                vfxContext.font = '50px Arial';
-                                vfxContext.fillText('Red Fury', vfxCanvas.width / 2 - 100, vfxCanvas.height / 2);
-                                audioManager.playSound('FinalHit');
-                                setTimeout(async() => {
-
-                                    vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-                                    await teleportAround(player, opponent);
-                                    
-                                    const screenX = (player.x - camera.x) * camera.zoom + gameCanvas.width / 2;
-                                    const screenY = (player.y - camera.y) * camera.zoom + gameCanvas.height / 2;
-                                    vfxContext.fillStyle = "red";
-                                    vfxContext.font = '50px Arial';
-                                    vfxContext.textAlign = 'center'; // Center align the text
-                                    vfxContext.fillText(`Die`, screenX + 20, screenY - 50);
-
-                                    setTimeout(() => {      
-                                        // applyImpactFrames(player, opponent, platforms, context, 100, 50);
-                                        screenShake(30, 200);
-                                        fireworkHitVfx(opponent, 100, 500);
-                                        applyDamage(opponent, 50); // Higher damage for ultimate
-                                        showHitVFX(opponent);
-                                        opponent.ignoreGravity = false;
-                                        applyKnockback(player, opponent);
-                                        audioManager.playRandomHitSound()
-                                    }, 500);
-                                }, 1000);
-                            }, 200);
-                        }, 300);
-                    }, 2000);
-                }, 300);
-            }, 300);
+        
+                await new Promise(resolve => setTimeout(resolve, 300));
+                vfxContext.fillStyle = 'black';
+                vfxContext.fillRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                vfxContext.fillStyle = 'white';
+                vfxContext.font = '30px Arial';
+                vfxContext.fillText('Red Fury Ultimate.', vfxCanvas.width / 2 - 100, vfxCanvas.height / 2);
+                audioManager.playSound('CinematicBoom');
+        
+                await new Promise(resolve => setTimeout(resolve, 2000));
+                vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                player.velocityY = -24;
+                settings.minZoom = 2;
+        
+                await new Promise(resolve => setTimeout(resolve, 300));
+                player.velocityY = 0;
+                player.ignoreGravity = true;
+        
+                await new Promise(resolve => setTimeout(resolve, 200));
+                vfxContext.fillStyle = 'black';
+                vfxContext.fillRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                vfxContext.fillStyle = 'red';
+                vfxContext.font = '50px Arial';
+                vfxContext.fillText('Red Fury', vfxCanvas.width / 2 - 100, vfxCanvas.height / 2);
+                audioManager.playSound('FinalHit');
+        
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                await teleportAround(player, opponent);
+        
+                const screenX = (player.x - camera.x) * camera.zoom + gameCanvas.width / 2;
+                const screenY = (player.y - camera.y) * camera.zoom + gameCanvas.height / 2;
+                vfxContext.fillStyle = "red";
+                vfxContext.font = '50px Arial';
+                vfxContext.textAlign = 'center'; // Center align the text
+                vfxContext.fillText(`Die`, screenX + 20, screenY - 50);
+        
+                await new Promise(resolve => setTimeout(resolve, 500));
+                screenShake(30, 200);
+                fireworkHitVfx(opponent, 100, 500);
+                applyDamage(opponent, 50); // Higher damage for ultimate
+                showHitVFX(opponent);
+                opponent.ignoreGravity = false;
+                applyKnockback(player, opponent);
+                audioManager.playRandomHitSound();
+        
+                // End cutscene
+                setTimeout(() => {
+                    vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                    settings.minZoom = DefaultZoom;
+                    player.disableControls = false;
+                    opponent.disableControls = false;
+                    player.ignoreGravity = false;    
+                    opponent.ignoreGravity = false;
+                    opponent.velocityX = 0;
+                    vfxContext.globalCompositeOperation = 'source-over';
+                    BattleMusic.play();
+                }, cutsceneDuration);
+            };
+        
+            cutscene();
         }
+        if (player.character === 3) {
+            BattleMusic.pause();
+            cutsceneDuration = 0; // Lengthen the duration for a more epic feel
+        
+            async function darkPortalThrow(player, opponent) {
+                // Position the portal
+                const portalX = player.x + 200;
+                const portalY = player.y;
+        
+                // Show the portal VFX
+                darkPortalVfx(portalX, portalY, 20, 100);
+        
+                // Player grabs the opponent
+                opponent.y = player.y - 10;
+                // Voice line
+                // audioManager.playVoiceLine('Feel the void!');
+                await new Promise(resolve => setTimeout(resolve, 1000));
+        
+                opponent.velocityX = -15;
+        
+                await new Promise(resolve => setTimeout(resolve, 500));
+                opponent.velocityX = 0;
+                opponent.ignoreGravity = true;
+        
+                // Throw opponent into the portal
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                opponent.x = portalX;
+                opponent.y = portalY;
+                opponent.visible = false;
+        
+                await new Promise(resolve => setTimeout(resolve, 500));
+                opponent.x = gameCanvas.width / 2 - 10000;
+                opponent.y = gameCanvas.height / 2;
+                opponent.visible = true;
+            }
+        
+            const cutscene = async () => {
+                await new Promise(resolve => setTimeout(resolve, 300));
+                opponent.velocityX = 0;
+                opponent.ignoreGravity = true;
+        
+                await darkPortalThrow(player, opponent);
+        
+                // Camera cuts to the player sitting in the middle of the void
+                vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                vfxContext.fillStyle = 'black';
+                vfxContext.fillRect(0, 0, vfxCanvas.width, vfxCanvas.height); // Ensure black background stays
+                
+                const originalGameCanvasStyle = backgroundImage;
+                backgroundImage = "black";
+                focusTarget = opponent;
+        
+                // Player sitting in the middle of nothing for a second
+                await new Promise(resolve => setTimeout(resolve, 1000));
+        
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+        
+                for (let frame = 0; frame < 60; frame++) {
+        
+                    // Words appear, shake, and disappear as hands get closer
+                    const words = ['Despair', 'Oblivion', 'Darkness', 'Eclipse', 'Shadow', 'Void', 'Nightmare'];
+        
+                    words.forEach((word) => {
+                        const xPos = Math.random() * vfxCanvas.width;
+                        const yPos = Math.random() * vfxCanvas.height;
+        
+                        for (let shake = 0; shake < 10; shake++) {
+                            const shakeX = xPos + (Math.random() - 0.5) * 1;
+                            const shakeY = yPos + (Math.random() - 0.5) * 1;
+        
+                            vfxContext.save();
+                            vfxContext.fillStyle = 'white';
+                            vfxContext.font = '50px Arial';
+                            vfxContext.textAlign = 'center';
+                            vfxContext.fillText(word, shakeX, shakeY);
+                            vfxContext.restore();
+                        }
+                    });
+                    await new Promise(resolve => setTimeout(resolve, 1000 / 30)); // 30 FPS
+                }        
+        
+                await new Promise(resolve => setTimeout(resolve, 1000));
+                vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                vfxContext.fillStyle = 'black';
+                vfxContext.fillRect(0, 0, vfxCanvas.width, vfxCanvas.height); // Ensure black background stays
+        
+                opponent.x = gameCanvas.width / 2;
+                opponent.y = gameCanvas.height / 2 - 1000;
+                backgroundImage = originalGameCanvasStyle;
+        
+                await new Promise(resolve => setTimeout(resolve, 500));
+                vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
 
-        // setTimeout(() => {
-        //     // applyImpactFrames(player, opponent, platforms, 100, 50);
-        //     screenShake(30, 200);
-        //     fireworkHitVfx(opponent, 100, 500);
-        //     applyDamage(opponent, 50); // Higher damage for ultimate
-        //     showHitVFX(opponent);
-        //     opponent.ignoreGravity = false;
-        //     applyKnockback(player, opponent);
-        // }, 1000);
+                // Giant hand grabs the player and throws them out of the portal
+                // darkPortalVfx(player, 20, 100); // More rings for exit portal
+                await new Promise(resolve => setTimeout(resolve, 300));
+                focusTarget = null;
+                applyDamage(opponent, 50);
+        
+                // End cutscene
+                setTimeout(() => {
+                    vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                    settings.minZoom = DefaultZoom;
+                    player.disableControls = false;
+                    opponent.disableControls = false;
+                    player.ignoreGravity = false;
+                    opponent.ignoreGravity = false;
+                    opponent.velocityX = 0;
+                    vfxContext.globalCompositeOperation = 'source-over';
+                    BattleMusic.play();
+                }, cutsceneDuration);
+            };
+            cutscene();
+        }
+    }        
+
+    function darkPortalVfx(x, y, effectRings = 10, effectRingRadius = 50) {
+        const effectColors = ['black', 'purple', 'darkblue'];
+        const ringsData = [];
     
-        // Ensure the canvas is cleared and globalCompositeOperation is reset before starting the cutscene
-        vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-        vfxContext.globalCompositeOperation = 'source-over';
+        for (let i = 0; i < effectRings; i++) {
+            ringsData.push({
+                color: effectColors[i % effectColors.length],
+                radius: effectRingRadius,
+                progress: 0,
+                opacity: 1
+            });
+        }
     
-        setTimeout(() => {
+        function animateEffects() {
             vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
-            settings.minZoom = DefaultZoom
-            player.disableControls = false;
-            opponent.disableControls = false;
-            player.ignoreGravity = false;    
-            opponent.ignoreGravity = false;
-            opponent.velocityX = 0;
-            // Reset globalCompositeOperation to default
-            vfxContext.globalCompositeOperation = 'source-over';
-            console.log("Cutscene ended for player:", player);
-            BattleMusic.play()
-        }, cutsceneDuration);
-    }
+            vfxContext.globalAlpha = 1; // Reset globalAlpha before drawing
     
+            ringsData.forEach(ring => {
+                ring.progress += 0.03; // Adjust the speed of the effect
+                ring.opacity = 1.1 - ring.progress;
     
+                const xPos = (x - camera.x) * camera.zoom + vfxCanvas.width / 2;
+                const yPos = (y - camera.y) * camera.zoom + vfxCanvas.height / 2;
+    
+                vfxContext.strokeStyle = ring.color;
+                vfxContext.globalAlpha = ring.opacity;
+                vfxContext.beginPath();
+                vfxContext.arc(xPos, yPos, ring.radius * ring.progress * camera.zoom, 0, 2 * Math.PI);
+                vfxContext.stroke();
+            });
+    
+            if (ringsData.some(ring => ring.progress < 1)) {
+                requestAnimationFrame(animateEffects);
+            } else {
+                vfxContext.clearRect(0, 0, vfxCanvas.width, vfxCanvas.height);
+                vfxContext.globalAlpha = 1; // Reset globalAlpha after clearing
+            }
+        }
+    
+        requestAnimationFrame(animateEffects);
+    }    
     
     function fireworkHitVfx(player, effectBeams = 10, effectBeamLength = 50) {
         const effectDuration = 1000; // 1 second
